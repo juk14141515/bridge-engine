@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>{{ path.title }}</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#0f172a; color:#e5e7eb; padding:40px; }
+    a { color:#38bdf8; text-decoration:none; }
+    .card { background:#111827; border:1px solid #1f2937; border-radius:18px; padding:24px; margin:18px 0; max-width:900px; }
+    .done { border-left:7px solid #22c55e; }
+    .unlocked { border-left:7px solid #38bdf8; }
+    .locked { border-left:7px solid #64748b; opacity:.55; }
+    textarea { width:100%; min-height:80px; border-radius:12px; padding:12px; }
+    button { margin-top:10px; padding:12px; border-radius:10px; border:0; background:#22c55e; color:#052e16; font-weight:bold; cursor:pointer; }
+    .bar { background:#334155; border-radius:999px; height:14px; overflow:hidden; max-width:900px; }
+    .fill { background:#22c55e; height:14px; }
+    .message { background:#064e3b; padding:14px; border-radius:12px; max-width:900px; }
+    .muted { color:#94a3b8; }
+  </style>
+</head>
+<body>
+  <a href="/">← Back</a>
+
+  <h1>{{ path.title }}</h1>
+  <p class="muted">Interest: {{ path.interest }} | Learning: {{ path.learning_goal }}</p>
+
+  <div class="bar"><div class="fill" style="width: {{ path.progress }}%;"></div></div>
+  <p class="muted">{{ path.progress }}% complete</p>
+
+  {% if message %}
+    <p class="message">{{ message }}</p>
+  {% endif %}
+
+  {% for step in path.steps %}
+    <div class="card {{ step.status }}">
+      <h2>Step {{ step.id }}: {{ step.title }}</h2>
+      <p><strong>Status:</strong> {{ step.status }}</p>
+      <p><strong>Why this matters:</strong> {{ step.why }}</p>
+      <p><strong>Checkpoint:</strong> {{ step.checkpoint }}</p>
+
+      {% if step.status == "unlocked" %}
+        <form method="POST" action="/complete/{{ path.id }}/{{ step.id }}">
+          <textarea name="answer" required placeholder="Write your checkpoint answer here..."></textarea>
+          <button type="submit">Complete Step & Unlock Next</button>
+        </form>
+      {% elif step.status == "done" %}
+        <p><strong>Your answer:</strong> {{ step.answer }}</p>
+      {% else %}
+        <p class="muted">Locked. Complete the previous step first.</p>
+      {% endif %}
+    </div>
+  {% endfor %}
+</body>
+</html>

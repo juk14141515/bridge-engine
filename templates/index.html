@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Bridge Engine</title>
+  <style>
+    body { font-family: Arial, sans-serif; background:#0f172a; color:#e5e7eb; padding:40px; }
+    .card { background:#111827; border:1px solid #1f2937; border-radius:18px; padding:24px; margin-bottom:20px; max-width:850px; }
+    input, button { padding:12px; border-radius:10px; border:0; margin:6px 0; font-size:15px; }
+    input { width:40%; }
+    button { background:#22c55e; color:#052e16; font-weight:bold; cursor:pointer; }
+    a { color:#38bdf8; text-decoration:none; }
+    .bar { background:#334155; border-radius:999px; height:12px; overflow:hidden; }
+    .fill { background:#22c55e; height:12px; }
+    .muted { color:#94a3b8; }
+  </style>
+</head>
+<body>
+  <h1>Bridge Engine</h1>
+  <p class="muted">Turn what you need to learn into something you actually want to build.</p>
+
+  <div class="card">
+    <h2>Create Bridge Path</h2>
+    <form method="POST" action="/create">
+      <input name="interest" placeholder="Interest: investing, coding, film">
+      <input name="learning_goal" placeholder="Learn: statistics, Spanish, math">
+      <button type="submit">Generate Path</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Saved Paths</h2>
+    {% for path in paths %}
+      <p><a href="/path/{{ path.id }}">{{ path.title }}</a></p>
+      <div class="bar"><div class="fill" style="width: {{ path.progress }}%;"></div></div>
+      <p class="muted">{{ path.progress }}% complete</p>
+    {% else %}
+      <p class="muted">No paths yet.</p>
+    {% endfor %}
+  </div>
+</body>
+</html>
