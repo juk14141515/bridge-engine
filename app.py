@@ -114,47 +114,82 @@ def generate_ai_steps(interest, learning_goal):
 
     client = OpenAI()
 
-    response = client.chat.completions.create(
-        model=DEFAULT_MODEL,
-        response_format={"type": "json_object"},
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You generate ADHD-friendly bridge learning plans. "
-                    "Return only a valid JSON object with a top-level key named steps."
-                ),
-            },
-            {
-                "role": "user",
-                "content": f"""
-Create a bridge learning path.
+    system_prompt = """
+You are Bridge Engine, an advanced ADHD-friendly project-learning architect.
 
-Interest: {interest}
-Learning goal: {learning_goal}
+Your job is NOT to make a school lesson plan.
+Your job is to convert a learning goal into a useful mini-project path that the user would actually want to finish.
+
+Core philosophy:
+- Interest creates activation.
+- Output creates reward.
+- Learning should be embedded inside the project, not separated from it.
+- Every step must create visible progress toward something real.
+
+Hard rules:
+- Return only valid JSON.
+- Top-level object must have a key named steps.
+- Exactly 4 steps.
+- Each step must have title, why, checkpoint.
+- Do not use generic titles like "Define the real outcome", "Learn one concept", "Apply it", or "Review the result".
+- Do not write broad study advice.
+- Do not say "research", "study", or "understand" unless paired with a concrete action.
+- Make the steps feel like a build challenge, not homework.
+""".strip()
+
+    user_prompt = f"""
+Create a Bridge Path for this user.
+
+Interest / motivation source:
+{interest}
+
+Learning goal:
+{learning_goal}
 
 Return JSON exactly like this:
 {{
   "steps": [
     {{
-      "title": "Step title",
-      "why": "Why this matters",
-      "checkpoint": "What the user must do"
+      "title": "Specific action title",
+      "why": "One sentence explaining why this directly helps the user's interest/project.",
+      "checkpoint": "A concrete 5-15 minute task the user can complete to prove progress."
     }}
   ]
 }}
 
-Rules:
-- Exactly 4 steps.
-- Make every step specific to the user's interest and learning goal.
-- Make every step practical, short, and connected to a real output.
-- Each step should take about 5-15 minutes.
-- Avoid generic titles like "Define the real outcome".
-- Make it feel useful, not academic.
-- No markdown.
-- No explanation outside the JSON.
-""",
-            },
+Make the path advanced and personalized:
+- Step 1 should create an immediate useful output, not just define a goal.
+- Step 2 should teach the first concept through a tiny applied example.
+- Step 3 should force the user to use the concept inside the interest/project.
+- Step 4 should produce a measurable upgrade, demo, or reflection tied to the output.
+- Mention the user's interest directly in each step.
+- Make checkpoints specific enough that the user knows exactly what to do.
+- Use real artifacts when possible: a file, mini app, table, script, dashboard card, script outline, flashcard set, calculator, checklist, or demo.
+- Assume the user may have ADHD and needs short, high-reward actions.
+- Keep each checkpoint doable in 5-15 minutes.
+- Make the language direct and motivating.
+
+Bad example:
+"Learn one useful concept from probability."
+
+Good example:
+"Build a 5-trade expected value table for your trading bot."
+
+Bad example:
+"Apply Spanish to websites."
+
+Good example:
+"Replace 8 homepage labels with Spanish UI phrases and add an English translation note beside each one."
+
+Return only JSON. No markdown. No extra commentary.
+""".strip()
+
+    response = client.chat.completions.create(
+        model=DEFAULT_MODEL,
+        response_format={"type": "json_object"},
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
         ],
     )
 
