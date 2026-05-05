@@ -1,6 +1,8 @@
 from flask import Flask, render_template, request, redirect, url_for
 import json
 import os
+import re
+import traceback
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -14,6 +16,7 @@ except ImportError:
 app = Flask(__name__)
 
 DATA_FILE = "data/bridge_paths.json"
+DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
 
 
 def load_paths():
@@ -29,17 +32,35 @@ def save_paths(paths):
         json.dump(paths, f, indent=2)
 
 
+def clean_phrase(value):
+    value = (value or "").strip()
+    value = re.sub(r"\s+", " ", value)
+    return value
+
+
+def display_learning_goal(value):
+    value = clean_phrase(value)
+    lowered = value.lower()
+    if lowered.startswith("learning "):
+        return value[9:].strip()
+    if lowered.startswith("learn "):
+        return value[6:].strip()
+    return value
+
+
 def fallback_path(interest, learning_goal):
+    learning = display_learning_goal(learning_goal)
+    interest = clean_phrase(interest)
     return [
         {
             "title": "Define the real outcome",
-            "why": f"This makes {learning_goal} feel useful instead of random.",
-            "checkpoint": f"Write how learning {learning_goal} helps you with {interest}.",
+            "why": f"This makes {learning} feel useful instead of random.",
+            "checkpoint": f"Write one sentence explaining how {learning} helps with {interest}.",
         },
         {
-            "title": f"Learn one useful concept from {learning_goal}",
+            "title": f"Learn one useful concept from {learning}",
             "why": "Small wins reduce friction and make starting easier.",
-            "checkpoint": "Explain the concept in 2-3 sentences.",
+            "checkpoint": "Explain the concept in 2-3 sentences using your own words.",
         },
         {
             "title": f"Apply it to {interest}",
@@ -54,26 +75,79 @@ def fallback_path(interest, learning_goal):
     ]
 
 
+def safe_json_loads(raw_text):
+    text = (raw_text or "").strip()
+
+    if text.startswith("```"):
+        text = text.replace("```json", "").replace("```", "").strip()
+
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        # Last-resort extraction if the model accidentally adds text around JSON.
+        first_brace = text.find("{")
+        last_brace = text.rfind("}")
+        if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
+            return json.loads(text[first_brace:last_brace + 1])
+        raise
+
+
+def validate_steps(payload, interest, learning_goal):
+    if isinstance(payload, list):
+        raw_steps = payload
+    elif isinstance(payload, dict):
+        raw_steps = payload.get("steps", [])
+    else:
+        raw_steps = []
+
+    cleaned = []
+    for step in raw_steps[:4]:
+        if not isinstance(step, dict):
+            continue
+        title = clean_phrase(step.get("title", ""))
+        why = clean_phrase(step.get("why", ""))
+        checkpoint = clean_phrase(step.get("checkpoint", ""))
+        if title and why and checkpoint:
+            cleaned.append({
+                "title": title,
+                "why": why,
+                "checkpoint": checkpoint,
+            })
+
+    if len(cleaned) == 4:
+        return cleaned
+
+    print(f"AI WARNING: Expected 4 valid steps, got {len(cleaned)}. Using fallback.")
+    return fallback_path(interest, learning_goal)
+
+
 def ai_steps(interest, learning_goal):
+    interest = clean_phrase(interest)
+    learning_goal = display_learning_goal(learning_goal)
+
     print("AI FUNCTION CALLED")
 
     if OpenAI is None:
-        print("AI ERROR: OpenAI package not installed.")
+        print("AI ERROR: OpenAI package not installed. Run: python -m pip install openai")
         return fallback_path(interest, learning_goal)
 
     if not os.getenv("OPENAI_API_KEY"):
-        print("AI ERROR: OPENAI_API_KEY is missing.")
+        print("AI ERROR: OPENAI_API_KEY is missing. Check your .env file.")
         return fallback_path(interest, learning_goal)
 
     client = OpenAI()
 
     try:
-        response = client.responses.create(
-            model="gpt-4.1-mini",
-            input=[
+        response = client.chat.completions.create(
+            model=DEFAULT_MODEL,
+            response_format={"type": "json_object"},
+            messages=[
                 {
                     "role": "system",
-                    "content": "You generate structured ADHD-friendly bridge learning plans. Return only valid JSON."
+                    "content": (
+                        "You generate ADHD-friendly bridge learning plans. "
+                        "Return ONLY a valid JSON object with a top-level key named steps."
+                    ),
                 },
                 {
                     "role": "user",
@@ -83,53 +157,45 @@ Create a bridge learning path.
 Interest: {interest}
 Learning goal: {learning_goal}
 
-Return ONLY valid JSON in this exact format:
-
-[
-  {{
-    "title": "Step title",
-    "why": "Why it matters",
-    "checkpoint": "What user must do"
-  }}
-]
+Return JSON exactly like this:
+{{
+  "steps": [
+    {{
+      "title": "Step title",
+      "why": "Why this matters",
+      "checkpoint": "What the user must do"
+    }}
+  ]
+}}
 
 Rules:
 - Exactly 4 steps.
-- Make every step specific to the user's interest.
+- Make every step specific to the user's interest and learning goal.
 - Make every step practical, short, and connected to a real output.
 - Each step should take about 5-15 minutes.
+- Avoid generic titles like "Define the real outcome" unless the title is specific to the project.
 - Make it feel useful, not academic.
 - No markdown.
 - No explanation outside the JSON.
-"""
-                }
+""",
+                },
             ],
         )
 
-        text = response.output_text.strip()
+        text = response.choices[0].message.content.strip()
         print("RAW AI OUTPUT:", text)
+        payload = safe_json_loads(text)
+        return validate_steps(payload, interest, learning_goal)
 
-        if text.startswith("```"):
-            text = text.replace("```json", "").replace("```", "").strip()
-
-        steps = json.loads(text)
-
-        cleaned = []
-        for step in steps[:4]:
-            cleaned.append({
-                "title": step.get("title", "Untitled step"),
-                "why": step.get("why", "This connects learning to your goal."),
-                "checkpoint": step.get("checkpoint", "Complete a short checkpoint."),
-            })
-
-        return cleaned if cleaned else fallback_path(interest, learning_goal)
-
-    except Exception as e:
-        print("AI ERROR:", e)
+    except Exception:
+        print("FULL AI ERROR:")
+        traceback.print_exc()
         return fallback_path(interest, learning_goal)
 
 
 def generate_path(interest, learning_goal):
+    interest = clean_phrase(interest)
+    learning_goal = display_learning_goal(learning_goal)
     steps = ai_steps(interest, learning_goal)
 
     formatted_steps = []
@@ -140,7 +206,7 @@ def generate_path(interest, learning_goal):
             "status": "unlocked" if i == 1 else "locked",
             "why": step["why"],
             "checkpoint": step["checkpoint"],
-            "answer": ""
+            "answer": "",
         })
 
     return {
@@ -149,7 +215,7 @@ def generate_path(interest, learning_goal):
         "interest": interest,
         "learning_goal": learning_goal,
         "title": f"Learn {learning_goal} through {interest}",
-        "steps": formatted_steps
+        "steps": formatted_steps,
     }
 
 
@@ -217,7 +283,7 @@ def complete_step(path_id, step_id):
                     return redirect(url_for(
                         "path_detail",
                         path_id=path_id,
-                        message="Nice — next step unlocked."
+                        message="Nice — next step unlocked.",
                     ))
 
     return redirect(url_for("path_detail", path_id=path_id))
@@ -225,4 +291,3 @@ def complete_step(path_id, step_id):
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=6060, debug=True)
-
