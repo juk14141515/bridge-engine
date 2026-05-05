@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for
+from flask import Flask, render_template, request, redirect, url_for, jsonify
 import json
 import os
 import re
@@ -16,7 +16,7 @@ except ImportError:
 app = Flask(__name__)
 
 DATA_FILE = "data/bridge_paths.json"
-DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
 
 def load_paths():
@@ -34,8 +34,7 @@ def save_paths(paths):
 
 def clean_phrase(value):
     value = (value or "").strip()
-    value = re.sub(r"\s+", " ", value)
-    return value
+    return re.sub(r"\s+", " ", value)
 
 
 def display_learning_goal(value):
@@ -77,29 +76,20 @@ def fallback_path(interest, learning_goal):
 
 def safe_json_loads(raw_text):
     text = (raw_text or "").strip()
-
     if text.startswith("```"):
         text = text.replace("```json", "").replace("```", "").strip()
-
     try:
         return json.loads(text)
     except json.JSONDecodeError:
-        # Last-resort extraction if the model accidentally adds text around JSON.
-        first_brace = text.find("{")
-        last_brace = text.rfind("}")
-        if first_brace != -1 and last_brace != -1 and last_brace > first_brace:
-            return json.loads(text[first_brace:last_brace + 1])
+        first = text.find("{")
+        last = text.rfind("}")
+        if first != -1 and last != -1 and last > first:
+            return json.loads(text[first:last + 1])
         raise
 
 
-def validate_steps(payload, interest, learning_goal):
-    if isinstance(payload, list):
-        raw_steps = payload
-    elif isinstance(payload, dict):
-        raw_steps = payload.get("steps", [])
-    else:
-        raw_steps = []
-
+def validate_steps(payload):
+    raw_steps = payload.get("steps", []) if isinstance(payload, dict) else []
     cleaned = []
     for step in raw_steps[:4]:
         if not isinstance(step, dict):
@@ -108,50 +98,36 @@ def validate_steps(payload, interest, learning_goal):
         why = clean_phrase(step.get("why", ""))
         checkpoint = clean_phrase(step.get("checkpoint", ""))
         if title and why and checkpoint:
-            cleaned.append({
-                "title": title,
-                "why": why,
-                "checkpoint": checkpoint,
-            })
-
-    if len(cleaned) == 4:
-        return cleaned
-
-    print(f"AI WARNING: Expected 4 valid steps, got {len(cleaned)}. Using fallback.")
-    return fallback_path(interest, learning_goal)
+            cleaned.append({"title": title, "why": why, "checkpoint": checkpoint})
+    return cleaned if len(cleaned) == 4 else None
 
 
-def ai_steps(interest, learning_goal):
+def generate_ai_steps(interest, learning_goal):
     interest = clean_phrase(interest)
     learning_goal = display_learning_goal(learning_goal)
 
-    print("AI FUNCTION CALLED")
-
     if OpenAI is None:
-        print("AI ERROR: OpenAI package not installed. Run: python -m pip install openai")
-        return fallback_path(interest, learning_goal)
+        return None, "OpenAI package is not installed. Run: python -m pip install -r requirements.txt"
 
     if not os.getenv("OPENAI_API_KEY"):
-        print("AI ERROR: OPENAI_API_KEY is missing. Check your .env file.")
-        return fallback_path(interest, learning_goal)
+        return None, "OPENAI_API_KEY is missing. Put it in C:\\Users\\zjuli\\bridge-engine\\.env"
 
     client = OpenAI()
 
-    try:
-        response = client.chat.completions.create(
-            model=DEFAULT_MODEL,
-            response_format={"type": "json_object"},
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You generate ADHD-friendly bridge learning plans. "
-                        "Return ONLY a valid JSON object with a top-level key named steps."
-                    ),
-                },
-                {
-                    "role": "user",
-                    "content": f"""
+    response = client.chat.completions.create(
+        model=DEFAULT_MODEL,
+        response_format={"type": "json_object"},
+        messages=[
+            {
+                "role": "system",
+                "content": (
+                    "You generate ADHD-friendly bridge learning plans. "
+                    "Return only a valid JSON object with a top-level key named steps."
+                ),
+            },
+            {
+                "role": "user",
+                "content": f"""
 Create a bridge learning path.
 
 Interest: {interest}
@@ -173,30 +149,45 @@ Rules:
 - Make every step specific to the user's interest and learning goal.
 - Make every step practical, short, and connected to a real output.
 - Each step should take about 5-15 minutes.
-- Avoid generic titles like "Define the real outcome" unless the title is specific to the project.
+- Avoid generic titles like "Define the real outcome".
 - Make it feel useful, not academic.
 - No markdown.
 - No explanation outside the JSON.
 """,
-                },
-            ],
-        )
+            },
+        ],
+    )
 
-        text = response.choices[0].message.content.strip()
-        print("RAW AI OUTPUT:", text)
-        payload = safe_json_loads(text)
-        return validate_steps(payload, interest, learning_goal)
+    text = response.choices[0].message.content.strip()
+    print("RAW AI OUTPUT:", text)
+    payload = safe_json_loads(text)
+    steps = validate_steps(payload)
 
+    if not steps:
+        return None, f"AI returned invalid step JSON: {text[:500]}"
+
+    return steps, ""
+
+
+def build_steps(interest, learning_goal):
+    print("AI FUNCTION CALLED")
+    try:
+        steps, error = generate_ai_steps(interest, learning_goal)
+        if steps:
+            return steps, "ai", ""
+        print("AI FALLBACK REASON:", error)
+        return fallback_path(interest, learning_goal), "fallback", error
     except Exception:
+        error = traceback.format_exc()
         print("FULL AI ERROR:")
-        traceback.print_exc()
-        return fallback_path(interest, learning_goal)
+        print(error)
+        return fallback_path(interest, learning_goal), "fallback", error.splitlines()[-1] if error else "Unknown AI error"
 
 
 def generate_path(interest, learning_goal):
     interest = clean_phrase(interest)
     learning_goal = display_learning_goal(learning_goal)
-    steps = ai_steps(interest, learning_goal)
+    steps, source, error = build_steps(interest, learning_goal)
 
     formatted_steps = []
     for i, step in enumerate(steps, start=1):
@@ -215,13 +206,16 @@ def generate_path(interest, learning_goal):
         "interest": interest,
         "learning_goal": learning_goal,
         "title": f"Learn {learning_goal} through {interest}",
+        "source": source,
+        "ai_model": DEFAULT_MODEL if source == "ai" else "fallback",
+        "ai_error": error,
         "steps": formatted_steps,
     }
 
 
 def progress_percent(path):
-    total = len(path["steps"])
-    done = len([s for s in path["steps"] if s["status"] == "done"])
+    total = len(path.get("steps", []))
+    done = len([s for s in path.get("steps", []) if s.get("status") == "done"])
     return int((done / total) * 100) if total else 0
 
 
@@ -261,6 +255,16 @@ def path_detail(path_id):
     message = request.args.get("message", "")
 
     return render_template("path.html", path=path, message=message)
+
+
+@app.route("/debug/ai")
+def debug_ai():
+    return jsonify({
+        "openai_package_loaded": OpenAI is not None,
+        "openai_api_key_loaded": bool(os.getenv("OPENAI_API_KEY")),
+        "model": DEFAULT_MODEL,
+        "data_file": DATA_FILE,
+    })
 
 
 @app.route("/complete/<path_id>/<int:step_id>", methods=["POST"])
