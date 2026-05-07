@@ -24,6 +24,7 @@ ENGINES = [
     "scripts/context_intelligence_engine.py",
     "scripts/path_effectiveness_engine.py",
     "scripts/adaptive_learning_engine.py",
+    "scripts/adaptive_backend_brain.py",
 ]
 
 

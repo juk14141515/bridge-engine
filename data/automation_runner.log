@@ -1,0 +1,127 @@
+{
+  "ok": true,
+  "ran_at": "2026-05-07 11:30:01",
+  "runs": 2,
+  "retention": {
+    "generated_at": "2026-05-07 11:30:01",
+    "total_paths": 0,
+    "started_paths": 0,
+    "completed_paths": 0,
+    "partial_paths": 0,
+    "abandoned_paths": 0,
+    "total_steps": 0,
+    "done_steps": 0,
+    "completion_rate": 0,
+    "start_rate": 0,
+    "feedback_events": 0,
+    "overwhelm_events": 0,
+    "flow_events": 0,
+    "recommended_energy_mode": "focused"
+  },
+  "actions": [
+    {
+      "type": "onboarding",
+      "title": "Create first-path suggestions",
+      "priority": "high"
+    }
+  ]
+}
+{
+  "ok": true,
+  "ran_at": "2026-05-07 12:00:01",
+  "runs": 3,
+  "retention": {
+    "generated_at": "2026-05-07 12:00:01",
+    "total_paths": 1,
+    "started_paths": 0,
+    "completed_paths": 0,
+    "partial_paths": 0,
+    "abandoned_paths": 1,
+    "total_steps": 4,
+    "done_steps": 0,
+    "completion_rate": 0,
+    "start_rate": 0,
+    "feedback_events": 0,
+    "overwhelm_events": 0,
+    "flow_events": 0,
+    "recommended_energy_mode": "focused"
+  },
+  "actions": [
+    {
+      "type": "momentum_recovery",
+      "title": "Offer a 3-minute restart task for abandoned paths",
+      "priority": "high"
+    },
+    {
+      "type": "clarity",
+      "title": "Rewrite checkpoints to be more concrete",
+      "priority": "high"
+    }
+  ]
+}
+{
+  "ok": true,
+  "ran_at": "2026-05-07 12:30:01",
+  "runs": 4,
+  "retention": {
+    "generated_at": "2026-05-07 12:30:01",
+    "total_paths": 1,
+    "started_paths": 0,
+    "completed_paths": 0,
+    "partial_paths": 0,
+    "abandoned_paths": 1,
+    "total_steps": 4,
+    "done_steps": 0,
+    "completion_rate": 0,
+    "start_rate": 0,
+    "feedback_events": 0,
+    "overwhelm_events": 0,
+    "flow_events": 0,
+    "recommended_energy_mode": "focused"
+  },
+  "actions": [
+    {
+      "type": "momentum_recovery",
+      "title": "Offer a 3-minute restart task for abandoned paths",
+      "priority": "high"
+    },
+    {
+      "type": "clarity",
+      "title": "Rewrite checkpoints to be more concrete",
+      "priority": "high"
+    }
+  ]
+}
+{
+  "ok": true,
+  "ran_at": "2026-05-07 13:00:01",
+  "runs": 7,
+  "retention": {
+    "generated_at": "2026-05-07 13:00:01",
+    "total_paths": 1,
+    "started_paths": 0,
+    "completed_paths": 0,
+    "partial_paths": 0,
+    "abandoned_paths": 1,
+    "total_steps": 4,
+    "done_steps": 0,
+    "completion_rate": 0,
+    "start_rate": 0,
+    "feedback_events": 0,
+    "overwhelm_events": 0,
+    "flow_events": 0,
+    "recommended_energy_mode": "focused"
+  },
+  "actions": [
+    {
+      "type": "momentum_recovery",
+      "title": "Offer a 3-minute restart task for abandoned paths",
+      "priority": "high"
+    },
+    {
+      "type": "clarity",
+      "title": "Rewrite checkpoints to be more concrete",
+      "priority": "high"
+    }
+  ]
+}
