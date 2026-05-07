@@ -1,0 +1,34 @@
+{
+  "goal_id": "filmmaking",
+  "title": "Filmmaking Execution Path",
+  "purpose": "Help users learn filmmaking by creating short, finished visual scenes instead of passively studying theory.",
+  "core_output": "A finished short scene, video, storyboard, trailer, documentary clip, or edited sequence.",
+  "skill_map": ["story", "shot composition", "lighting", "sound", "editing", "pacing", "emotion", "continuity", "color", "publishing"],
+  "starter_modes": {
+    "30_second_start": ["Choose one emotion for a scene.", "Open your camera app.", "Write one line of dialogue.", "Pick one location."],
+    "3_minute_start": ["Record a 10-second shot showing one emotion.", "Create a 3-shot storyboard: wide, medium, close-up.", "Find one movie scene and note one camera angle."],
+    "10_minute_build": ["Shoot a 15-second scene with beginning, middle, and end.", "Edit 3 clips into a micro-story.", "Create a one-minute mood trailer using phone footage."]
+  },
+  "phases": [
+    {"phase": 1, "name": "Shoot One Emotion", "objective": "Create a tiny finished scene fast.", "projects": ["15-second emotion scene", "silent micro-story", "one-room scene"], "checkpoint": "User has one filmed clip that communicates an emotion."},
+    {"phase": 2, "name": "Control Shots", "objective": "Use framing and shot choice intentionally.", "projects": ["3-shot scene", "dialogue coverage test", "movement scene"], "checkpoint": "User can explain why each shot exists."},
+    {"phase": 3, "name": "Edit for Feeling", "objective": "Learn pacing and emotion through cuts.", "projects": ["before/after edit", "music pacing test", "reaction cut scene"], "checkpoint": "User has an edited sequence with intentional pacing."},
+    {"phase": 4, "name": "Sound + Atmosphere", "objective": "Use audio/music to change meaning.", "projects": ["same scene different music", "sound-design scene", "voiceover micro-doc"], "checkpoint": "User compares two audio versions and explains the difference."},
+    {"phase": 5, "name": "Publishable Short", "objective": "Finish and share a small complete film artifact.", "projects": ["60-second short", "mini documentary", "class assignment film"], "checkpoint": "User has a finished video file or shareable link."}
+  ],
+  "modalities": {
+    "hands_on": "Shoot or edit before watching tutorials.",
+    "visual": "Use storyboards, reference frames, and shot maps.",
+    "audio": "Describe the scene out loud before filming.",
+    "walking": "Walk and brainstorm the scene's emotion or story beat.",
+    "music_supported": "Pick a track first and edit to its energy.",
+    "reading": "Read one tiny film concept and apply it in the next shot."
+  },
+  "adaptive_rules": [
+    {"condition": "low_energy", "action": "Only capture one shot or storyboard one frame."},
+    {"condition": "hyperfocus", "action": "Offer a 30-minute shoot/edit sprint with a stopping checkpoint."},
+    {"condition": "overwhelmed", "action": "Remove equipment complexity. Use phone-only filming."},
+    {"condition": "bored", "action": "Use a favorite movie style or recreate a scene."}
+  ],
+  "outside_app_uses": ["Generate a shot list.", "Create a storyboard checklist.", "Turn school material into a short film assignment.", "Create a YouTube/TikTok video plan."]
+}
