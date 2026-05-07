@@ -1,0 +1,114 @@
+{
+  "version": "1.0",
+  "purpose": "Personalize Bridge Engine before the user starts so learning paths match how they actually activate, focus, avoid, recover, and build momentum.",
+  "medical_guardrail": "Questions are for personalization and productivity support only. The app should not diagnose, treat, or claim to manage ADHD or any medical condition.",
+  "sections": [
+    {
+      "id": "context",
+      "title": "Where do you want help?",
+      "questions": [
+        {
+          "id": "primary_context",
+          "type": "single_choice",
+          "prompt": "Where do you want Bridge Engine to help most right now?",
+          "options": ["school", "college", "work", "business", "personal projects", "life tasks", "fitness", "creative work", "language learning"]
+        },
+        {
+          "id": "current_pressure",
+          "type": "multi_choice",
+          "prompt": "What feels hardest lately?",
+          "options": ["starting tasks", "finishing tasks", "knowing what to do first", "staying interested", "remembering steps", "avoiding overwhelm", "turning learning into action", "coming back after breaks"]
+        }
+      ]
+    },
+    {
+      "id": "activation",
+      "title": "What gets you started?",
+      "questions": [
+        {
+          "id": "motivation_triggers",
+          "type": "multi_choice",
+          "prompt": "What usually makes you actually want to start?",
+          "options": ["making money", "helping someone", "building something real", "competition", "visible progress", "deadlines", "curiosity", "making something look good", "rewards", "social accountability"]
+        },
+        {
+          "id": "interest_domains",
+          "type": "free_text_list",
+          "prompt": "List topics, hobbies, goals, or people that make boring tasks feel more worth doing."
+        }
+      ]
+    },
+    {
+      "id": "friction",
+      "title": "What blocks you?",
+      "questions": [
+        {
+          "id": "common_blockers",
+          "type": "multi_choice",
+          "prompt": "What usually stops you from starting or continuing?",
+          "options": ["too many steps", "unclear directions", "boring material", "fear of doing it wrong", "perfectionism", "tiredness", "phone/apps", "not enough reward", "not seeing the point", "too much reading"]
+        },
+        {
+          "id": "school_friction",
+          "type": "multi_choice",
+          "prompt": "For school or college tasks, what makes assignments harder?",
+          "options": ["reading instructions", "starting essays", "math steps", "turning in work", "studying for tests", "long lectures", "remembering due dates", "asking for help", "doing work without immediate benefit"]
+        }
+      ]
+    },
+    {
+      "id": "energy",
+      "title": "How should tasks adapt to your energy?",
+      "questions": [
+        {
+          "id": "default_energy",
+          "type": "single_choice",
+          "prompt": "What mode should Bridge Engine start you in by default?",
+          "options": ["low", "focused", "hyperfocus"]
+        },
+        {
+          "id": "best_session_length",
+          "type": "single_choice",
+          "prompt": "What task length feels easiest to start?",
+          "options": ["3 minutes", "5 minutes", "10 minutes", "15 minutes", "25 minutes"]
+        }
+      ]
+    },
+    {
+      "id": "reward_design",
+      "title": "What kind of progress feels rewarding?",
+      "questions": [
+        {
+          "id": "reward_preferences",
+          "type": "multi_choice",
+          "prompt": "What would make you want to continue?",
+          "options": ["XP", "streaks", "unlocking levels", "seeing a finished artifact", "checking boxes", "earning badges", "progress bars", "future-self projections", "mini challenges", "calm encouragement"]
+        },
+        {
+          "id": "avoid_reward_styles",
+          "type": "multi_choice",
+          "prompt": "What should the app avoid because it would stress you out?",
+          "options": ["guilt reminders", "losing streaks", "too many notifications", "competitive pressure", "public rankings", "big dashboards", "strict deadlines", "overly cheerful messages"]
+        }
+      ]
+    },
+    {
+      "id": "learning_style",
+      "title": "How do you learn best?",
+      "questions": [
+        {
+          "id": "learning_formats",
+          "type": "multi_choice",
+          "prompt": "Which formats usually work best for you?",
+          "options": ["building projects", "examples first", "short videos", "visual diagrams", "step-by-step lists", "practice problems", "teaching someone else", "real-world scenarios", "flashcards", "trial and error"]
+        },
+        {
+          "id": "output_preferences",
+          "type": "multi_choice",
+          "prompt": "What should learning produce?",
+          "options": ["a file", "a mini app", "a script", "a dashboard", "a checklist", "a study guide", "a presentation", "a video", "a table", "a finished assignment"]
+        }
+      ]
+    }
+  ]
+}
