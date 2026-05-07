@@ -1,0 +1,128 @@
+{
+  "goal_id": "web_design",
+  "title": "Web Design Execution Path",
+  "purpose": "Help users learn web design by building visible, useful web artifacts immediately.",
+  "core_output": "A real website, landing page, portfolio, dashboard, or product page.",
+  "skill_map": [
+    "layout",
+    "visual hierarchy",
+    "color systems",
+    "typography",
+    "spacing",
+    "responsive design",
+    "HTML structure",
+    "CSS styling",
+    "interaction states",
+    "accessibility",
+    "deployment"
+  ],
+  "starter_modes": {
+    "30_second_start": [
+      "Open one HTML file or design canvas.",
+      "Write the page title only.",
+      "Pick one inspiration site and screenshot it.",
+      "Choose one accent color."
+    ],
+    "3_minute_start": [
+      "Create a single hero section with a headline and button.",
+      "Make one profile card with name, photo placeholder, and short bio.",
+      "Copy the layout of one favorite card and rebuild it roughly."
+    ],
+    "10_minute_build": [
+      "Build a homepage wireframe with header, hero, feature cards, and footer.",
+      "Create a dashboard card with title, metric, and short explanation.",
+      "Turn a boring assignment into a clean one-page study dashboard."
+    ]
+  },
+  "phases": [
+    {
+      "phase": 1,
+      "name": "Visible First Win",
+      "objective": "Create something visual immediately so the user feels progress.",
+      "projects": [
+        "profile card",
+        "simple landing hero",
+        "course assignment tracker card",
+        "portfolio intro section"
+      ],
+      "checkpoint": "User has one visible component on screen."
+    },
+    {
+      "phase": 2,
+      "name": "Layout Control",
+      "objective": "Learn spacing, alignment, grids, and sections through a real page.",
+      "projects": [
+        "personal homepage",
+        "product landing page",
+        "student dashboard",
+        "movie recommendation page"
+      ],
+      "checkpoint": "User can explain why each section is placed where it is."
+    },
+    {
+      "phase": 3,
+      "name": "Style System",
+      "objective": "Create a reusable style language with colors, typography, buttons, and cards.",
+      "projects": [
+        "mini design system",
+        "theme switcher mockup",
+        "premium card library"
+      ],
+      "checkpoint": "User has reusable styles instead of one-off random design choices."
+    },
+    {
+      "phase": 4,
+      "name": "Responsive + Accessible",
+      "objective": "Make the design work on phone, tablet, and desktop with readable structure.",
+      "projects": [
+        "mobile landing page",
+        "responsive dashboard",
+        "accessible assignment planner"
+      ],
+      "checkpoint": "User checks mobile width and improves readability/accessibility."
+    },
+    {
+      "phase": 5,
+      "name": "Deploy + Share",
+      "objective": "Publish the work so the user gets a real-world reward loop.",
+      "projects": [
+        "published portfolio",
+        "live landing page",
+        "shareable project page"
+      ],
+      "checkpoint": "User has a live URL or shareable artifact."
+    }
+  ],
+  "modalities": {
+    "hands_on": "Build first, explain second.",
+    "visual": "Use screenshots, layout maps, and before/after comparisons.",
+    "audio": "Have the user describe the page out loud before editing.",
+    "walking": "Walk for 3 minutes and decide the page's one main purpose.",
+    "music_supported": "Use a 10-minute playlist sprint to style one section.",
+    "reading": "Read one tiny concept, then apply it immediately."
+  },
+  "adaptive_rules": [
+    {
+      "condition": "low_energy",
+      "action": "Use 30-second or 3-minute starts only. Avoid full-page tasks."
+    },
+    {
+      "condition": "hyperfocus",
+      "action": "Offer a 20-minute build sprint with a required stopping checkpoint."
+    },
+    {
+      "condition": "overwhelmed",
+      "action": "Convert project into one component only: card, button, hero, or navbar."
+    },
+    {
+      "condition": "bored",
+      "action": "Inject novelty: redesign favorite app, movie page, game UI, or dashboard."
+    }
+  ],
+  "outside_app_uses": [
+    "Generate a static HTML file plan.",
+    "Create a checklist for VS Code or Codex.",
+    "Turn an assignment into a visual webpage project.",
+    "Generate a portfolio project roadmap."
+  ]
+}
