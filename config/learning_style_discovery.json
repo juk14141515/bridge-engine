@@ -1,0 +1,95 @@
+{
+  "version": "1.0",
+  "purpose": "Help Bridge Engine discover how each user learns best through preference questions, behavior, and task outcomes. This is not a fixed learning-style label system; it should adapt over time based on what actually works.",
+  "guardrail": "Avoid boxing users into one learning style. Treat styles as flexible modes that change by task, energy level, context, and mood.",
+  "modalities": {
+    "hands_on": {
+      "label": "Hands-on building",
+      "best_for": ["coding", "projects", "math application", "creative work"],
+      "task_pattern": "Build or change something immediately, then explain what changed."
+    },
+    "audio": {
+      "label": "Listening / audio",
+      "best_for": ["review", "commutes", "walking", "language learning", "reflection"],
+      "task_pattern": "Listen, repeat, summarize out loud, or record a short explanation."
+    },
+    "walking": {
+      "label": "Walking / movement",
+      "best_for": ["brainstorming", "memory recall", "low-energy starts", "reflection"],
+      "task_pattern": "Take a short walk and answer one focused question verbally or in notes."
+    },
+    "music_supported": {
+      "label": "Music-supported focus",
+      "best_for": ["repetitive tasks", "writing", "setup work", "low activation"],
+      "task_pattern": "Use a playlist/timer and complete one short visible action."
+    },
+    "visual": {
+      "label": "Visual diagrams / maps",
+      "best_for": ["systems", "planning", "complex concepts", "memory"],
+      "task_pattern": "Sketch a map, flowchart, dashboard card, or diagram."
+    },
+    "reading": {
+      "label": "Reading",
+      "best_for": ["definitions", "instructions", "reference material"],
+      "task_pattern": "Read a tiny section, highlight the useful part, and apply it immediately."
+    },
+    "writing": {
+      "label": "Writing / explaining",
+      "best_for": ["reflection", "essays", "memory", "concept mastery"],
+      "task_pattern": "Write a short explanation, checklist, script, or mini-summary."
+    },
+    "social_teaching": {
+      "label": "Teaching / social explanation",
+      "best_for": ["retention", "confidence", "accountability"],
+      "task_pattern": "Explain the concept to a friend, imaginary audience, or AI coach."
+    },
+    "gamified": {
+      "label": "Challenge / game-style learning",
+      "best_for": ["motivation", "momentum", "skill trees", "streaks"],
+      "task_pattern": "Turn the next action into a challenge, unlock, score, or level-up."
+    }
+  },
+  "discovery_questions": [
+    {
+      "id": "best_focus_context",
+      "type": "multi_choice",
+      "prompt": "When do you usually focus best?",
+      "options": ["with music", "in silence", "while walking", "at a desk", "with someone nearby", "late at night", "early morning", "with a timer", "when building something", "when there is pressure"]
+    },
+    {
+      "id": "easiest_start_format",
+      "type": "multi_choice",
+      "prompt": "What makes a task easiest to start?",
+      "options": ["a checklist", "a video/audio explanation", "a tiny first step", "a visual example", "a real project", "a timer", "a challenge", "someone explaining it", "copying an example", "walking and thinking first"]
+    },
+    {
+      "id": "preferred_learning_actions",
+      "type": "multi_choice",
+      "prompt": "Which ways of learning feel most natural to you?",
+      "options": ["making things", "listening", "reading", "watching", "writing", "talking it out", "drawing diagrams", "doing practice problems", "teaching someone", "trial and error"]
+    },
+    {
+      "id": "environment_supports",
+      "type": "multi_choice",
+      "prompt": "What helps your environment feel more doable?",
+      "options": ["music", "white noise", "walking", "clean desk", "coffee", "phone away", "body doubling", "public place", "dark mode", "small timer", "reward after finishing"]
+    },
+    {
+      "id": "avoid_learning_formats",
+      "type": "multi_choice",
+      "prompt": "What formats make you avoid starting?",
+      "options": ["long readings", "vague instructions", "silent studying", "long lectures", "too many tabs", "big assignments", "unstructured work", "rote memorization", "strict deadlines", "no visible progress"]
+    }
+  ],
+  "behavioral_signals": {
+    "hands_on": ["completes build tasks", "continues after project checkpoints", "prefers artifacts"],
+    "audio": ["uses listening tasks", "completes walking/audio reflections", "records summaries"],
+    "walking": ["selects low-energy movement mode", "completes verbal reflection tasks"],
+    "music_supported": ["chooses music focus", "completes timer-based repetitive tasks"],
+    "visual": ["completes diagrams", "uses flowcharts", "prefers dashboard cards"],
+    "reading": ["completes text-based instructions", "uses summaries"],
+    "writing": ["writes longer answers", "uses reflection prompts"],
+    "social_teaching": ["explains concepts", "uses accountability", "teaches back"],
+    "gamified": ["responds to XP", "keeps streaks", "accepts challenges"]
+  }
+}
