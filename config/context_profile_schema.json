@@ -1,0 +1,28 @@
+{
+  "version": "1.0",
+  "description": "Stores learned user performance across time, environment, and state.",
+  "fields": {
+    "time_preferences": {
+      "morning": 0,
+      "afternoon": 0,
+      "night": 0
+    },
+    "energy_patterns": {
+      "low": 0,
+      "focused": 0,
+      "hyperfocus": 0
+    },
+    "environment_preferences": {
+      "desk": 0,
+      "walking": 0,
+      "public": 0,
+      "bed": 0
+    },
+    "post_meal_performance": 0,
+    "session_success_rates": {
+      "short": 0,
+      "medium": 0,
+      "long": 0
+    }
+  }
+}
