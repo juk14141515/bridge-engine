@@ -3,7 +3,7 @@ import json
 import os
 import re
 import traceback
-from datetime import datetime
+from datetime import datetime, date
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -16,20 +16,63 @@ except ImportError:
 app = Flask(__name__)
 
 DATA_FILE = "data/bridge_paths.json"
+PROFILE_FILE = "data/profile.json"
 DEFAULT_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+KEEP_GOING_MODE = os.getenv("KEEP_GOING_MODE", "momentum")  # momentum | paywall
+FREE_PATH_LIMIT = int(os.getenv("FREE_PATH_LIMIT", "3"))
+
+
+def now_stamp():
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def load_json_file(path, default):
+    if not os.path.exists(path):
+        return default
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except json.JSONDecodeError:
+        return default
+
+
+def save_json_file(path, payload):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2)
 
 
 def load_paths():
-    if not os.path.exists(DATA_FILE):
-        return []
-    with open(DATA_FILE, "r", encoding="utf-8") as f:
-        return json.load(f)
+    return load_json_file(DATA_FILE, [])
 
 
 def save_paths(paths):
-    os.makedirs("data", exist_ok=True)
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(paths, f, indent=2)
+    save_json_file(DATA_FILE, paths)
+
+
+def default_profile():
+    return {
+        "name": "Julio",
+        "core_interests": ["coding", "investing", "building useful tools"],
+        "learning_style": "project_based",
+        "motivation_type": "visible_progress",
+        "preferred_task_minutes": 10,
+        "difficulty": "starter",
+        "created_at": now_stamp(),
+        "updated_at": now_stamp(),
+    }
+
+
+def load_profile():
+    profile = load_json_file(PROFILE_FILE, default_profile())
+    base = default_profile()
+    base.update(profile)
+    return base
+
+
+def save_profile(profile):
+    profile["updated_at"] = now_stamp()
+    save_json_file(PROFILE_FILE, profile)
 
 
 def clean_phrase(value):
@@ -47,31 +90,298 @@ def display_learning_goal(value):
     return value
 
 
-def fallback_path(interest, learning_goal):
-    learning = display_learning_goal(learning_goal)
+def progress_percent(path):
+    total = len(path.get("steps", []))
+    done = len([s for s in path.get("steps", []) if s.get("status") == "done"])
+    return int((done / total) * 100) if total else 0
+
+
+def classify_bridge(interest, learning_goal):
+    text = f"{interest} {learning_goal}".lower()
+    if any(word in text for word in ["spanish", "language", "french", "japanese"]):
+        return "language"
+    if any(word in text for word in ["trading", "invest", "stock", "bot", "finance", "probability", "expected value"]):
+        return "finance_coding"
+    if any(word in text for word in ["code", "coding", "python", "website", "app", "flask", "html", "css"]):
+        return "coding"
+    if any(word in text for word in ["film", "movie", "script", "video", "story"]):
+        return "creative"
+    if any(word in text for word in ["math", "statistics", "stats", "algebra", "calculus"]):
+        return "math"
+    if any(word in text for word in ["fitness", "lifting", "nutrition", "workout", "health"]):
+        return "fitness"
+    return "general"
+
+
+def get_adaptive_context(paths, interest, learning_goal, profile=None):
+    profile = profile or load_profile()
+    learning_goal_l = display_learning_goal(learning_goal).lower()
+    interest_l = clean_phrase(interest).lower()
+
+    total_paths = len(paths)
+    completed_paths = 0
+    partial_paths = 0
+    repeated_topic_count = 0
+    total_done_steps = 0
+    total_steps = 0
+    today_completions = 0
+    today_str = str(date.today())
+
+    for path in paths:
+        progress = progress_percent(path)
+        if progress == 100:
+            completed_paths += 1
+        elif progress > 0:
+            partial_paths += 1
+
+        if learning_goal_l and learning_goal_l in path.get("learning_goal", "").lower():
+            repeated_topic_count += 1
+        if interest_l and interest_l in path.get("interest", "").lower():
+            repeated_topic_count += 1
+
+        steps = path.get("steps", [])
+        total_steps += len(steps)
+        done_steps = [s for s in steps if s.get("status") == "done"]
+        total_done_steps += len(done_steps)
+        today_completions += len([
+            s for s in done_steps
+            if str(s.get("completed_at", "")).startswith(today_str)
+        ])
+
+    completion_rate = int((total_done_steps / total_steps) * 100) if total_steps else 0
+
+    if completion_rate >= 70 and completed_paths >= 1:
+        difficulty = "intermediate"
+    elif total_paths >= 3 and completion_rate < 30:
+        difficulty = "micro"
+    else:
+        difficulty = profile.get("difficulty", "starter") or "starter"
+
+    momentum_score = min(100, (total_done_steps * 12) + (completed_paths * 20) + (today_completions * 10))
+
+    if momentum_score >= 70:
+        momentum_state = "hot"
+    elif momentum_score >= 30:
+        momentum_state = "building"
+    else:
+        momentum_state = "starting"
+
+    return {
+        "total_paths": total_paths,
+        "completed_paths": completed_paths,
+        "partial_paths": partial_paths,
+        "repeated_topic_count": repeated_topic_count,
+        "completion_rate": completion_rate,
+        "difficulty": difficulty,
+        "momentum_score": momentum_score,
+        "momentum_state": momentum_state,
+        "today_completions": today_completions,
+        "bridge_type": classify_bridge(interest, learning_goal),
+        "preferred_task_minutes": profile.get("preferred_task_minutes", 10),
+    }
+
+
+def get_keep_going_gate(paths, context):
+    if KEEP_GOING_MODE == "paywall" and len(paths) >= FREE_PATH_LIMIT:
+        return {
+            "allowed": False,
+            "mode": "paywall",
+            "title": "Keep Going locked",
+            "message": "Free path limit reached. This is where a future subscription gate can unlock unlimited continuation paths.",
+            "cta": "Upgrade placeholder",
+        }
+
+    if context.get("momentum_state") == "hot":
+        return {
+            "allowed": True,
+            "mode": "momentum_push",
+            "title": "You are in momentum mode",
+            "message": "You have enough progress that the app should offer a harder follow-up while motivation is high.",
+            "cta": "Keep going with a challenge",
+        }
+
+    return {
+        "allowed": True,
+        "mode": "momentum_build",
+        "title": "Keep Going available",
+        "message": "The app will create a small next step to preserve momentum without overwhelming you.",
+        "cta": "Keep going",
+    }
+
+
+def local_adaptive_path(interest, learning_goal, context=None, continuation=False):
     interest = clean_phrase(interest)
-    return [
-        {
-            "title": "Define the real outcome",
-            "why": f"This makes {learning} feel useful instead of random.",
-            "checkpoint": f"Write one sentence explaining how {learning} helps with {interest}.",
-        },
-        {
-            "title": f"Learn one useful concept from {learning}",
-            "why": "Small wins reduce friction and make starting easier.",
-            "checkpoint": "Explain the concept in 2-3 sentences using your own words.",
-        },
-        {
-            "title": f"Apply it to {interest}",
-            "why": "Application turns learning into something real.",
-            "checkpoint": "Describe what you built, changed, or created.",
-        },
-        {
-            "title": "Review the result",
-            "why": "Reflection helps your brain connect effort to reward.",
-            "checkpoint": "Write what improved and what the next upgrade should be.",
-        },
-    ]
+    learning = display_learning_goal(learning_goal)
+    context = context or {}
+    difficulty = context.get("difficulty", "starter")
+    bridge_type = context.get("bridge_type") or classify_bridge(interest, learning)
+
+    time_box = "5 minutes" if difficulty == "micro" else "10 minutes" if difficulty == "starter" else "15 minutes"
+    prefix = "Next-level: " if continuation else ""
+
+    templates = {
+        "language": [
+            {
+                "title": f"{prefix}Build a tiny {learning} version of your {interest} screen",
+                "why": f"You get an immediate visible result while using {learning} in a real interface.",
+                "checkpoint": f"Create or sketch one small {interest} screen with 8 labels translated into {learning}. Keep it under {time_box}.",
+            },
+            {
+                "title": f"Make a 10-word {learning} UI bank for {interest}",
+                "why": f"A reusable word bank makes {learning} feel like a tool for building, not memorizing.",
+                "checkpoint": f"Write 10 words or phrases your {interest} project would actually display, then add the English meaning beside each one.",
+            },
+            {
+                "title": f"Add a translation toggle idea to {interest}",
+                "why": "Switching between versions forces recall while keeping the reward tied to the project.",
+                "checkpoint": "Describe or code one button/card that shows English on one side and the target language on the other.",
+            },
+            {
+                "title": f"Demo the {learning} version out loud",
+                "why": "Speaking the project text connects recognition, recall, and real usage.",
+                "checkpoint": f"Read your 8-10 {learning} labels out loud once and mark the 3 weakest words for tomorrow.",
+            },
+        ],
+        "finance_coding": [
+            {
+                "title": f"{prefix}Create a tiny decision table for {interest}",
+                "why": f"A table turns {learning} into something that can improve real decisions.",
+                "checkpoint": f"Make a 5-row table with columns: setup, chance of win, possible gain, possible loss, and decision. Time-box: {time_box}.",
+            },
+            {
+                "title": f"Calculate one simple {learning} example for {interest}",
+                "why": "One concrete calculation is enough to make the concept useful instead of abstract.",
+                "checkpoint": "Pick one row from the table and calculate whether the expected outcome is positive or negative.",
+            },
+            {
+                "title": f"Turn {learning} into a rule for {interest}",
+                "why": "Rules are how learning becomes automation.",
+                "checkpoint": "Write one if/then rule your bot or investing workflow could use based on the calculation.",
+            },
+            {
+                "title": f"Score whether the rule improves {interest}",
+                "why": "A measurable score creates feedback, which is how the system learns over time.",
+                "checkpoint": "Rate the rule 1-10 for usefulness and write one thing you would test next.",
+            },
+        ],
+        "coding": [
+            {
+                "title": f"{prefix}Build the smallest visible {interest} artifact",
+                "why": f"A visible artifact gives quick reward and makes {learning} easier to start.",
+                "checkpoint": f"Create one file, screen, or mockup that shows {learning} being used inside {interest}. Time-box: {time_box}.",
+            },
+            {
+                "title": f"Extract one reusable {learning} pattern for {interest}",
+                "why": "Patterns are easier to reuse than isolated facts.",
+                "checkpoint": f"Write one tiny example of {learning} and label what each part does.",
+            },
+            {
+                "title": f"Add the pattern to your {interest} project",
+                "why": "Applying immediately converts studying into building.",
+                "checkpoint": "Add or describe one feature that uses the pattern, even if it is rough.",
+            },
+            {
+                "title": "Save the next upgrade idea",
+                "why": "A clear next step helps you restart later when motivation drops.",
+                "checkpoint": "Write the next 10-minute improvement you would make when you come back.",
+            },
+        ],
+        "creative": [
+            {
+                "title": f"{prefix}Turn {learning} into a scene for {interest}",
+                "why": "Story gives the material emotional weight, which makes it easier to remember.",
+                "checkpoint": f"Write a 6-line scene, shot list, or storyboard where {learning} affects what happens.",
+            },
+            {
+                "title": f"Create a prop or visual for {learning}",
+                "why": "A visual artifact makes abstract material easier to use.",
+                "checkpoint": "Make one symbol, chart, object, or frame that represents the concept.",
+            },
+            {
+                "title": f"Explain {learning} through {interest}",
+                "why": "Teaching through the thing you like proves understanding.",
+                "checkpoint": f"Record or write a 30-second explanation of {learning} using your {interest} example.",
+            },
+            {
+                "title": "Cut it into a final mini-demo",
+                "why": "A finished mini-demo creates closure and momentum.",
+                "checkpoint": "Pick the best piece and write what you would improve in version two.",
+            },
+        ],
+        "math": [
+            {
+                "title": f"{prefix}Create a real-number example from {interest}",
+                "why": f"Numbers from {interest} make {learning} feel relevant.",
+                "checkpoint": f"Write one realistic mini-problem using numbers from {interest}.",
+            },
+            {
+                "title": f"Solve one tiny {learning} piece",
+                "why": "A small solved example lowers friction and builds confidence.",
+                "checkpoint": "Solve only the first step and write what the number means in plain English.",
+            },
+            {
+                "title": f"Use the answer to make a decision in {interest}",
+                "why": "Decision-making makes math practical.",
+                "checkpoint": "Write one decision you would make differently because of the result.",
+            },
+            {
+                "title": "Create a repeatable mini-template",
+                "why": "Templates let you reuse the skill without starting from scratch.",
+                "checkpoint": "Write a 3-line template you can reuse with new numbers later.",
+            },
+        ],
+        "fitness": [
+            {
+                "title": f"{prefix}Connect {learning} to one fitness decision",
+                "why": f"Fitness turns {learning} into something you can feel and track.",
+                "checkpoint": f"Write one {interest} question that {learning} could answer, such as recovery, calories, volume, or progress.",
+            },
+            {
+                "title": f"Make a tiny {learning} tracker",
+                "why": "Tracking makes learning visible and personal.",
+                "checkpoint": "Create a 3-row table with input, result, and decision columns.",
+            },
+            {
+                "title": f"Apply the result to {interest}",
+                "why": "A changed routine makes the learning real.",
+                "checkpoint": "Write one small adjustment you would make based on the tracker.",
+            },
+            {
+                "title": "Choose tomorrow's measurement",
+                "why": "One next measurement keeps the loop alive without overload.",
+                "checkpoint": "Pick one thing to measure tomorrow and why it matters.",
+            },
+        ],
+        "general": [
+            {
+                "title": f"{prefix}Build one visible artifact for {interest}",
+                "why": f"A visible artifact gives your brain a reason to engage with {learning}.",
+                "checkpoint": f"Create a tiny file, note, table, card, or sketch that connects {learning} to {interest}.",
+            },
+            {
+                "title": f"Find the first useful piece of {learning}",
+                "why": "The first useful piece is easier to start than the whole subject.",
+                "checkpoint": "Write one concept and one example of how it affects your project.",
+            },
+            {
+                "title": f"Use it immediately in {interest}",
+                "why": "Immediate use creates momentum.",
+                "checkpoint": "Add, change, or describe one project feature using the concept.",
+            },
+            {
+                "title": "Choose the next smallest upgrade",
+                "why": "Small next actions help you restart when motivation drops.",
+                "checkpoint": "Write the next 10-minute upgrade and why it is worth doing.",
+            },
+        ],
+    }
+
+    return templates.get(bridge_type, templates["general"])
+
+
+def fallback_path(interest, learning_goal):
+    context = get_adaptive_context([], interest, learning_goal)
+    return local_adaptive_path(interest, learning_goal, context)
 
 
 def safe_json_loads(raw_text):
@@ -102,9 +412,10 @@ def validate_steps(payload):
     return cleaned if len(cleaned) == 4 else None
 
 
-def generate_ai_steps(interest, learning_goal):
+def generate_ai_steps(interest, learning_goal, context=None):
     interest = clean_phrase(interest)
     learning_goal = display_learning_goal(learning_goal)
+    context = context or {}
 
     if OpenAI is None:
         return None, "OpenAI package is not installed. Run: python -m pip install -r requirements.txt"
@@ -146,6 +457,12 @@ Interest / motivation source:
 Learning goal:
 {learning_goal}
 
+Adaptive context from previous paths:
+- Total saved paths: {context.get('total_paths', 0)}
+- Completion rate: {context.get('completion_rate', 0)}%
+- Recommended difficulty: {context.get('difficulty', 'starter')}
+- Momentum state: {context.get('momentum_state', 'starting')}
+
 Return JSON exactly like this:
 {{
   "steps": [
@@ -168,18 +485,6 @@ Make the path advanced and personalized:
 - Assume the user may have ADHD and needs short, high-reward actions.
 - Keep each checkpoint doable in 5-15 minutes.
 - Make the language direct and motivating.
-
-Bad example:
-"Learn one useful concept from probability."
-
-Good example:
-"Build a 5-trade expected value table for your trading bot."
-
-Bad example:
-"Apply Spanish to websites."
-
-Good example:
-"Replace 8 homepage labels with Spanish UI phrases and add an English translation note beside each one."
 
 Return only JSON. No markdown. No extra commentary.
 """.strip()
@@ -204,25 +509,28 @@ Return only JSON. No markdown. No extra commentary.
     return steps, ""
 
 
-def build_steps(interest, learning_goal):
+def build_steps(interest, learning_goal, paths=None, continuation=False):
+    paths = paths or []
+    profile = load_profile()
+    context = get_adaptive_context(paths, interest, learning_goal, profile)
     print("AI FUNCTION CALLED")
     try:
-        steps, error = generate_ai_steps(interest, learning_goal)
+        steps, error = generate_ai_steps(interest, learning_goal, context)
         if steps:
-            return steps, "ai", ""
+            return steps, "ai", "", context
         print("AI FALLBACK REASON:", error)
-        return fallback_path(interest, learning_goal), "fallback", error
+        return local_adaptive_path(interest, learning_goal, context, continuation), "local_adaptive", error, context
     except Exception:
         error = traceback.format_exc()
         print("FULL AI ERROR:")
         print(error)
-        return fallback_path(interest, learning_goal), "fallback", error.splitlines()[-1] if error else "Unknown AI error"
+        return local_adaptive_path(interest, learning_goal, context, continuation), "local_adaptive", error.splitlines()[-1] if error else "Unknown AI error", context
 
 
-def generate_path(interest, learning_goal):
+def generate_path(interest, learning_goal, existing_paths=None, continuation=False, parent_id=None):
     interest = clean_phrase(interest)
     learning_goal = display_learning_goal(learning_goal)
-    steps, source, error = build_steps(interest, learning_goal)
+    steps, source, error, context = build_steps(interest, learning_goal, existing_paths or [], continuation)
 
     formatted_steps = []
     for i, step in enumerate(steps, start=1):
@@ -237,29 +545,74 @@ def generate_path(interest, learning_goal):
 
     return {
         "id": datetime.now().strftime("%Y%m%d%H%M%S"),
-        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "created_at": now_stamp(),
         "interest": interest,
         "learning_goal": learning_goal,
         "title": f"Learn {learning_goal} through {interest}",
         "source": source,
-        "ai_model": DEFAULT_MODEL if source == "ai" else "fallback",
+        "ai_model": DEFAULT_MODEL if source == "ai" else "local_adaptive",
         "ai_error": error,
+        "adaptive_context": context,
+        "keep_going_gate": get_keep_going_gate(existing_paths or [], context),
+        "parent_id": parent_id,
+        "is_continuation": continuation,
         "steps": formatted_steps,
+        "events": [],
     }
 
 
-def progress_percent(path):
-    total = len(path.get("steps", []))
-    done = len([s for s in path.get("steps", []) if s.get("status") == "done"])
-    return int((done / total) * 100) if total else 0
+def recommend_next_action(paths, profile=None):
+    profile = profile or load_profile()
+    active_paths = [p for p in paths if progress_percent(p) < 100]
+    if active_paths:
+        path = active_paths[0]
+        unlocked = [s for s in path.get("steps", []) if s.get("status") == "unlocked"]
+        if unlocked:
+            step = unlocked[0]
+            return {
+                "type": "continue_step",
+                "title": f"Continue: {step.get('title')}",
+                "why": "You already have an unlocked step, so finishing it is the fastest way to keep momentum.",
+                "path_id": path.get("id"),
+                "step_id": step.get("id"),
+            }
+
+    interests = profile.get("core_interests", []) or ["building useful tools"]
+    interest = interests[0]
+    return {
+        "type": "new_path",
+        "title": f"Start a 10-minute path around {interest}",
+        "why": "Starting small keeps the system from becoming another overwhelming to-do list.",
+        "interest": interest,
+    }
+
+
+def update_profile_from_completion(profile, path, step):
+    interest = path.get("interest")
+    if interest and interest not in profile.get("core_interests", []):
+        profile.setdefault("core_interests", []).append(interest)
+
+    events = profile.setdefault("events", [])
+    events.append({
+        "type": "step_completed",
+        "path_id": path.get("id"),
+        "step_id": step.get("id"),
+        "learning_goal": path.get("learning_goal"),
+        "interest": interest,
+        "created_at": now_stamp(),
+    })
+    profile["last_completed_at"] = now_stamp()
+    save_profile(profile)
 
 
 @app.route("/")
 def index():
     paths = load_paths()
+    profile = load_profile()
     for path in paths:
         path["progress"] = progress_percent(path)
-    return render_template("index.html", paths=paths)
+    recommendation = recommend_next_action(paths, profile)
+    return render_template("index.html", paths=paths, profile=profile, recommendation=recommendation)
 
 
 @app.route("/create", methods=["POST"])
@@ -271,7 +624,7 @@ def create():
         return redirect(url_for("index"))
 
     paths = load_paths()
-    new_path = generate_path(interest, learning_goal)
+    new_path = generate_path(interest, learning_goal, paths)
     paths.insert(0, new_path)
     save_paths(paths)
 
@@ -287,9 +640,64 @@ def path_detail(path_id):
         return "Path not found", 404
 
     path["progress"] = progress_percent(path)
+    if "keep_going_gate" not in path:
+        path["keep_going_gate"] = get_keep_going_gate(paths, path.get("adaptive_context", {}))
     message = request.args.get("message", "")
 
     return render_template("path.html", path=path, message=message)
+
+
+@app.route("/keep-going/<path_id>", methods=["POST"])
+def keep_going(path_id):
+    paths = load_paths()
+    parent = next((p for p in paths if p.get("id") == path_id), None)
+    if not parent:
+        return "Path not found", 404
+
+    context = parent.get("adaptive_context", {})
+    gate = get_keep_going_gate(paths, context)
+    if not gate.get("allowed"):
+        parent["keep_going_gate"] = gate
+        save_paths(paths)
+        return redirect(url_for("path_detail", path_id=path_id, message=gate.get("message", "Keep Going is locked.")))
+
+    next_path = generate_path(
+        parent.get("interest", ""),
+        parent.get("learning_goal", ""),
+        paths,
+        continuation=True,
+        parent_id=path_id,
+    )
+    next_path["title"] = f"Keep Going: {next_path['title']}"
+    paths.insert(0, next_path)
+    save_paths(paths)
+    return redirect(url_for("path_detail", path_id=next_path["id"], message="Momentum path created."))
+
+
+@app.route("/profile", methods=["GET", "POST"])
+def profile():
+    profile_data = load_profile()
+    if request.method == "POST":
+        profile_data["name"] = request.form.get("name", profile_data.get("name", "")).strip() or profile_data.get("name", "")
+        interests = request.form.get("core_interests", "")
+        if interests:
+            profile_data["core_interests"] = [clean_phrase(x) for x in interests.split(",") if clean_phrase(x)]
+        profile_data["learning_style"] = request.form.get("learning_style", profile_data.get("learning_style", "project_based"))
+        profile_data["motivation_type"] = request.form.get("motivation_type", profile_data.get("motivation_type", "visible_progress"))
+        try:
+            profile_data["preferred_task_minutes"] = int(request.form.get("preferred_task_minutes", profile_data.get("preferred_task_minutes", 10)))
+        except ValueError:
+            profile_data["preferred_task_minutes"] = 10
+        save_profile(profile_data)
+        return redirect(url_for("profile"))
+    return jsonify(profile_data)
+
+
+@app.route("/api/recommendation")
+def api_recommendation():
+    paths = load_paths()
+    profile_data = load_profile()
+    return jsonify(recommend_next_action(paths, profile_data))
 
 
 @app.route("/debug/ai")
@@ -299,6 +707,17 @@ def debug_ai():
         "openai_api_key_loaded": bool(os.getenv("OPENAI_API_KEY")),
         "model": DEFAULT_MODEL,
         "data_file": DATA_FILE,
+        "keep_going_mode": KEEP_GOING_MODE,
+        "free_path_limit": FREE_PATH_LIMIT,
+    })
+
+
+@app.route("/debug/paths")
+def debug_paths():
+    paths = load_paths()
+    return jsonify({
+        "count": len(paths),
+        "latest": paths[0] if paths else None,
     })
 
 
@@ -306,6 +725,7 @@ def debug_ai():
 def complete_step(path_id, step_id):
     answer = request.form.get("answer", "").strip()
     paths = load_paths()
+    profile_data = load_profile()
 
     for path in paths:
         if path["id"] == path_id:
@@ -313,11 +733,23 @@ def complete_step(path_id, step_id):
                 if step["id"] == step_id and step["status"] == "unlocked":
                     step["status"] = "done"
                     step["answer"] = answer
+                    step["completed_at"] = now_stamp()
+
+                    path.setdefault("events", []).append({
+                        "type": "step_completed",
+                        "step_id": step_id,
+                        "answer_length": len(answer),
+                        "created_at": now_stamp(),
+                    })
 
                     for next_step in path["steps"]:
                         if next_step["id"] == step_id + 1 and next_step["status"] == "locked":
                             next_step["status"] = "unlocked"
 
+                    path["progress"] = progress_percent(path)
+                    path["adaptive_context"] = get_adaptive_context(paths, path.get("interest", ""), path.get("learning_goal", ""), profile_data)
+                    path["keep_going_gate"] = get_keep_going_gate(paths, path.get("adaptive_context", {}))
+                    update_profile_from_completion(profile_data, path, step)
                     save_paths(paths)
                     return redirect(url_for(
                         "path_detail",
