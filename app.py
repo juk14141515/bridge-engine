@@ -4,6 +4,8 @@ import os
 from datetime import datetime
 from dotenv import load_dotenv
 
+from bridge_engine.api.runtime_api import runtime_api
+
 load_dotenv()
 
 try:
@@ -12,6 +14,7 @@ except ImportError:
     OpenAI = None
 
 app = Flask(__name__)
+app.register_blueprint(runtime_api)
 
 DATA_FILE = "data/bridge_paths.json"
 
@@ -225,4 +228,3 @@ def complete_step(path_id, step_id):
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=6060, debug=True)
-
