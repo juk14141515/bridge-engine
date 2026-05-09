@@ -1,0 +1,42 @@
+DEMO_RUNTIME_LANES = [
+    {
+        'workflow_id': 'essay_lane_001',
+        'title': 'Finish psychology paper',
+        'status': 'active_step',
+        'momentum_score': 42,
+        'progress_confidence': 58,
+        'recommended_mode': 'adhd_support',
+    },
+    {
+        'workflow_id': 'podcast_lane_002',
+        'title': 'Launch first podcast episode',
+        'status': 'planned',
+        'momentum_score': 71,
+        'progress_confidence': 64,
+        'recommended_mode': 'creator_mode',
+    },
+    {
+        'workflow_id': 'relationship_lane_003',
+        'title': 'Understand girlfriend gaming interests',
+        'status': 'continued',
+        'momentum_score': 80,
+        'progress_confidence': 73,
+        'recommended_mode': 'identity_bridge',
+    },
+    {
+        'workflow_id': 'burnout_lane_004',
+        'title': 'Recover from founder burnout',
+        'status': 'active_step',
+        'momentum_score': 28,
+        'progress_confidence': 31,
+        'recommended_mode': 'burnout_recovery',
+    },
+    {
+        'workflow_id': 'language_lane_005',
+        'title': 'Learn Spanish through coding',
+        'status': 'proof_submitted',
+        'momentum_score': 76,
+        'progress_confidence': 70,
+        'recommended_mode': 'immersive_language',
+    },
+]
