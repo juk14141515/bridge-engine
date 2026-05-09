@@ -1,0 +1,15 @@
+INTERACTIVE_ENGINES = {
+    "matching_engine": "Interactive matching and association tasks",
+    "sentence_grading": "Grades written language responses",
+    "voice_transcription": "Converts speech to executable text",
+    "speaking_analysis": "Analyzes fluency and pacing",
+    "code_sandbox": "Runs isolated execution exercises",
+    "essay_drafting": "Builds structured writing progressively",
+    "slide_generation": "Generates presentation structures",
+    "concept_graph": "Visualizes connected concepts",
+    "flashcard_generation": "Creates adaptive recall decks",
+    "adaptive_quizzes": "Dynamic question generation",
+    "ocr_parser": "Extracts information from images and PDFs",
+    "drag_drop_reasoning": "Interactive organization exercises",
+    "diagram_generation": "Creates visual understanding maps",
+}
