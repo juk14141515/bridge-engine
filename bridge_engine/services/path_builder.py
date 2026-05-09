@@ -31,6 +31,8 @@ class PathBuilderService:
                 "status": "unlocked" if index == 1 else "locked",
                 "answer": "",
                 "modules": step["modules"],
+                "interaction_type": step["interaction_type"],
+                "interaction_types": step["interaction_types"],
             })
 
         return {
