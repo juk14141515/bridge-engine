@@ -1,10 +1,16 @@
 from bridge_engine.modules.coding_module import CodingExecutionModule
+from bridge_engine.modules.fitness_module import FitnessExecutionModule
+from bridge_engine.modules.gaming_module import GamingExecutionModule
+from bridge_engine.modules.investing_module import InvestingExecutionModule
 from bridge_engine.modules.language_module import LanguageExecutionModule
 
 
 MODULES = [
-    CodingExecutionModule(),
     LanguageExecutionModule(),
+    CodingExecutionModule(),
+    GamingExecutionModule(),
+    FitnessExecutionModule(),
+    InvestingExecutionModule(),
 ]
 
 
@@ -19,10 +25,10 @@ class ModuleRegistry:
                 score += 1
 
             if module.supports(interest, interest):
-                score += 1
+                score += 2
 
             if module.supports(learning_goal, learning_goal):
-                score += 2
+                score += 3
 
             if score > 0:
                 weighted_modules.append({
