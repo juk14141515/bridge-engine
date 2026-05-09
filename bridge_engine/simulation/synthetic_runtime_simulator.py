@@ -20,6 +20,30 @@ class SyntheticRuntimeSimulator:
         self.identity_engine = DynamicIdentityTranslationEngine()
         self.runtime_engine = LiveRuntimeOrchestrator()
 
+    def infer_target_domain(self, profile, world):
+        interests = profile.get("interests", [])
+        identity = profile.get("identity", [])
+        goal = profile.get("goal", "")
+
+        goal_lower = goal.lower()
+
+        if "spanish" in goal_lower:
+            return "Spanish"
+
+        if "gaming" in goal_lower and "cameras" in interests:
+            return "gaming"
+
+        if "statistics" in goal_lower and "investing" in interests:
+            return "statistics"
+
+        if identity:
+            return identity[0]
+
+        if interests:
+            return interests[-1]
+
+        return world["world"]
+
     def run(self):
         simulations = []
 
@@ -39,6 +63,8 @@ class SyntheticRuntimeSimulator:
             cognitive = self.cognitive_engine.evaluate({
                 "retry_density": profile["telemetry"].get("retry_count", 0),
                 "fatigue_score": profile["telemetry"].get("fatigue_score", 0.1),
+                "abandonment_events": profile["telemetry"].get("abandonment_events", 0),
+                "inactivity_bursts": profile["telemetry"].get("inactivity_bursts", 0),
             })
 
             media = self.media_engine.recommend(
@@ -48,14 +74,17 @@ class SyntheticRuntimeSimulator:
                 },
             )
 
+            source_identity = profile.get("interests", ["general"])[0]
+            target_domain = self.infer_target_domain(profile, world)
+
             identity_bridge = self.identity_engine.translate(
-                profile.get("interests", ["general"])[0],
-                world["world"],
+                source_identity,
+                target_domain,
             )
 
             runtime = self.runtime_engine.orchestrate({
                 "momentum_score": int(execution["momentum_score"] * 100),
-                "stuck_detected": "burnout" in profile.get("friction", []),
+                "stuck_detected": cognitive["burnout_probability"] > 0.7,
                 "recommended_next_action": profile["goal"],
             })
 
