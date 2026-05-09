@@ -27,6 +27,7 @@ class ModuleComposer:
             reasons = []
             checkpoints = []
             modules = []
+            interaction_types = []
 
             for item in generated:
                 if index < len(item["steps"]):
@@ -35,12 +36,15 @@ class ModuleComposer:
                     reasons.append(step["why"])
                     checkpoints.append(step["checkpoint"])
                     modules.append(item["module"])
+                    interaction_types.append(step.get("interaction_type", "micro_quiz"))
 
             merged_steps.append({
                 "title": titles[0],
                 "why": " ".join(reasons[:2]),
                 "checkpoint": checkpoints[0],
                 "modules": modules,
+                "interaction_type": interaction_types[0] if interaction_types else "micro_quiz",
+                "interaction_types": interaction_types,
             })
 
         dominant = Counter([
