@@ -1,15 +1,24 @@
 from datetime import datetime
 
+from bridge_engine.modules.composer import ModuleComposer
 from bridge_engine.modules.module_registry import ModuleRegistry
 
 
 registry = ModuleRegistry()
+composer = ModuleComposer()
 
 
 class PathBuilderService:
     def build(self, interest: str, learning_goal: str):
-        module = registry.resolve(interest, learning_goal)
-        generated_steps = module.generate_steps(interest, learning_goal)
+        weighted_modules = registry.resolve(interest, learning_goal)
+
+        composed = composer.compose(
+            weighted_modules,
+            interest,
+            learning_goal,
+        )
+
+        generated_steps = composed["steps"]
 
         formatted_steps = []
 
@@ -21,7 +30,7 @@ class PathBuilderService:
                 "checkpoint": step["checkpoint"],
                 "status": "unlocked" if index == 1 else "locked",
                 "answer": "",
-                "module": module.module_name,
+                "modules": step["modules"],
             })
 
         return {
@@ -29,7 +38,7 @@ class PathBuilderService:
             "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
             "interest": interest,
             "learning_goal": learning_goal,
-            "module": module.module_name,
+            "module": composed["dominant_module"],
             "title": f"Learn {learning_goal} through {interest}",
             "steps": formatted_steps,
         }
