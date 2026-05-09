@@ -22,21 +22,25 @@ class LanguageExecutionModule(BaseExecutionModule):
             self.build_step(
                 title="Create a real-world usage scenario",
                 why="Language learning works better when emotionally connected.",
-                checkpoint=f"Describe a realistic situation where {learning_goal} helps your interest in {interest}."
+                checkpoint=f"Describe a realistic situation where {learning_goal} helps your interest in {interest}.",
+                interaction_type="sentence_builder",
             ),
             self.build_step(
                 title="Learn high-frequency phrases",
                 why="Useful phrases create immediate progress and confidence.",
-                checkpoint="Memorize and use 5 useful phrases out loud."
+                checkpoint="Match useful phrases to their meaning.",
+                interaction_type="matching",
             ),
             self.build_step(
                 title="Apply the language in context",
                 why="Contextual use improves retention dramatically.",
-                checkpoint=f"Write or speak about {interest} using the target language."
+                checkpoint=f"Write or speak about {interest} using the target language.",
+                interaction_type="voice_reflection",
             ),
             self.build_step(
-                title="Reflect and reinforce",
-                why="Review strengthens memory formation.",
-                checkpoint="Record what phrases or concepts felt easiest to remember."
+                title="Listen and reinforce",
+                why="Audio repetition builds natural familiarity.",
+                checkpoint="Listen to a short podcast clip and summarize one idea.",
+                interaction_type="podcast_reflection",
             ),
         ]
