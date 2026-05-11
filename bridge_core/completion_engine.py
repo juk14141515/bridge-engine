@@ -136,6 +136,45 @@ class BridgeSession:
         payload["steps"] = [step.to_dict() for step in self.steps]
         return payload
 
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "BridgeSession":
+        steps_in: List[Dict[str, Any]] = data.get("steps") or []
+        steps: List[BridgeStep] = []
+        for s in steps_in:
+            hv = s.get("help_variants")
+            if not isinstance(hv, dict):
+                hv = {}
+            steps.append(
+                BridgeStep(
+                    id=str(s.get("id", "")),
+                    title=str(s.get("title", "")),
+                    prompt=str(s.get("prompt", "")),
+                    why=str(s.get("why", "")),
+                    action=str(s.get("action", "")),
+                    output_slot=str(s.get("output_slot", "")),
+                    status=str(s.get("status", "pending")),
+                    user_output=str(s.get("user_output", "") or s.get("answer", "")),
+                    help_variants=hv,
+                    created_at=str(s.get("created_at") or datetime.utcnow().isoformat()),
+                    completed_at=s.get("completed_at"),
+                )
+            )
+        return cls(
+            id=str(data["id"]),
+            task=str(data.get("task", "")),
+            frame=str(data.get("frame", "gaming")),
+            supports=list(data.get("supports") or []),
+            user_words=str(data.get("user_words", "")),
+            category=str(data.get("category", "general")),
+            status=str(data.get("status", "active")),
+            current_step_index=int(data.get("current_step_index", 0) or 0),
+            steps=steps,
+            artifact=dict(data.get("artifact") or {}),
+            events=list(data.get("events") or []),
+            created_at=str(data.get("created_at") or datetime.utcnow().isoformat()),
+            updated_at=str(data.get("updated_at") or datetime.utcnow().isoformat()),
+        )
+
 
 class BridgeCompletionEngine:
     """Creates and advances interest-translated completion sessions."""

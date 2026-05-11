@@ -1,0 +1,108 @@
+.wrap {
+  display: grid;
+  gap: 14px;
+}
+
+.check {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: rgba(8, 17, 18, 0.9);
+  background: rgba(125, 215, 164, 0.76);
+  box-shadow: 0 0 44px rgba(125, 215, 164, 0.14);
+}
+
+.copy {
+  display: grid;
+  gap: 5px;
+}
+
+.title {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+}
+
+.text {
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.saved {
+  color: var(--faint);
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+
+.memory {
+  padding-top: 8px;
+}
+
+.memory summary {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.entryList {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+  max-width: 46ch;
+}
+
+.entryButton {
+  appearance: none;
+  border: 0;
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--faint);
+  border-radius: 16px;
+  padding: 12px;
+  display: grid;
+  gap: 5px;
+  text-align: left;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.entryButton:hover {
+  background: rgba(125, 215, 164, 0.055);
+  color: var(--muted);
+}
+
+.returnBox {
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.returnTitle {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.returnText {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.returnActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+

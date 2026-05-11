@@ -1,0 +1,40 @@
+.text {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.pre {
+  margin: 0;
+  padding: 12px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(255, 255, 255, 0.04);
+  white-space: pre-wrap;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--faint);
+  line-height: 1.55;
+}
+
+.badgeRow {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.badge {
+  font-size: 12px;
+  color: var(--muted);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 999px;
+  padding: 6px 10px;
+}
+

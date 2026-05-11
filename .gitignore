@@ -1,6 +1,7 @@
+node_modules/
+dist/
 venv/
-.env
-static/.env
-data/*.json
 __pycache__/
-*.pyc
+.env
+*.log
+.cursor/

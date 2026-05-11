@@ -1,0 +1,19 @@
+.base {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--text);
+  border-radius: 14px;
+  padding: 12px 12px;
+  line-height: 1.35;
+}
+
+.base::placeholder {
+  color: rgba(255, 255, 255, 0.38);
+}
+
+.textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+

@@ -1,0 +1,21 @@
+.wrap {
+  display: grid;
+  gap: 10px;
+}
+
+.prompt {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.55;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  background: rgba(0, 0, 0, 0.14);
+  border-radius: 14px;
+  padding: 10px 12px;
+}
+
+.note {
+  font-size: 12px;
+  color: var(--faint);
+  line-height: 1.55;
+}
+

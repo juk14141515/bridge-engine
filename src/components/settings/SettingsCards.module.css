@@ -1,0 +1,68 @@
+.stack {
+  display: grid;
+  gap: 12px;
+}
+
+.grid2 {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.select {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--text);
+  border-radius: 14px;
+  padding: 10px 10px;
+  min-height: 42px;
+}
+
+.toggle {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.toggle input {
+  width: 18px;
+  height: 18px;
+}
+
+.rule {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.09);
+  margin: 6px 0;
+}
+
+.privacy {
+  font-size: 12px;
+  color: var(--faint);
+  line-height: 1.55;
+}
+
+.dangerZone {
+  display: grid;
+  gap: 8px;
+}
+
+.dangerTitle {
+  font-weight: 650;
+  letter-spacing: -0.02em;
+}
+
+.dangerText {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+@media (max-width: 900px) {
+  .grid2 {
+    grid-template-columns: 1fr;
+  }
+}
+

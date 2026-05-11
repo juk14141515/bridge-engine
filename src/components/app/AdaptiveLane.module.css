@@ -1,0 +1,214 @@
+.stack {
+  display: grid;
+  gap: 14px;
+}
+
+.ack {
+  color: rgba(225, 238, 229, 0.72);
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 8px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(125, 215, 164, 0.08);
+  background: rgba(125, 215, 164, 0.035);
+  width: fit-content;
+  max-width: 100%;
+}
+
+.ack::before {
+  content: "✓";
+  margin-right: 8px;
+  color: rgba(125, 215, 164, 0.75);
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  padding-top: 14px;
+}
+
+.panel {
+  border: 0;
+  background: transparent;
+  border-radius: var(--radius);
+  padding: 16px 4px;
+}
+
+.message {
+  display: grid;
+  gap: 10px;
+}
+
+.softQuestion {
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+}
+
+.softHint {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+  margin-top: -2px;
+}
+
+.quickRow {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 6px;
+}
+
+.quick {
+  appearance: none;
+  border: 1px solid rgba(232, 238, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.quick:hover {
+  border-color: rgba(118, 220, 205, 0.18);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.bridge {
+  display: grid;
+  gap: 10px;
+}
+
+.smallLabel {
+  font-size: 12px;
+  color: var(--faint);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.bigLine {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.35;
+}
+
+.reframe {
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.actionBox {
+  appearance: none;
+  display: block;
+  width: 100%;
+  text-align: left;
+  white-space: pre-wrap;
+  border: 0;
+  background: linear-gradient(135deg, rgba(125, 215, 164, 0.10), rgba(255, 255, 255, 0.035));
+  border-radius: 20px;
+  padding: 16px;
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.18);
+  transition: background 260ms ease, transform 260ms ease, box-shadow 260ms ease;
+}
+
+.actionBox:hover {
+  background: linear-gradient(135deg, rgba(125, 215, 164, 0.14), rgba(255, 255, 255, 0.045));
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.24);
+}
+
+.actionBox:active {
+  transform: translateY(1px);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ack {
+    animation: ackIn 520ms ease-out;
+  }
+  .panel {
+    animation: panelIn 520ms ease-out;
+  }
+}
+
+@keyframes ackIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes panelIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.after {
+  display: grid;
+  gap: 10px;
+}
+
+.details {
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  padding: 8px 0;
+}
+
+.details summary {
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.detailBody {
+  padding-top: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.actionsLeft {
+  display: flex;
+  justify-content: flex-start;
+  padding-top: 6px;
+}
+
+.checkWrap {
+  display: grid;
+  gap: 12px;
+}
+
+.softCheck {
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  color: rgba(8, 17, 18, 0.9);
+  background: rgba(125, 215, 164, 0.74);
+  box-shadow: 0 0 40px rgba(125, 215, 164, 0.14);
+}
+
+.checkActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 8px;
+}
+

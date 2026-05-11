@@ -1,0 +1,22 @@
+.wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.wrap button {
+  appearance: none;
+  border: 1px solid rgba(232, 238, 255, 0.08);
+  background: rgba(255, 255, 255, 0.025);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 13px;
+}
+
+.wrap button:hover {
+  background: rgba(125, 215, 164, 0.055);
+  color: var(--text);
+}
+
