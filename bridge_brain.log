@@ -1,0 +1,11 @@
+/bin/sh: 1: /home/ubuntu/bridge-engine/venv/bin/python: not found
+/bin/sh: 1: /home/ubuntu/bridge-engine/venv/bin/python: not found
+/home/ubuntu/bridge-engine/venv/bin/python: Error while finding module specification for 'bridge_engine.automation.bridge_brain_daemon' (ModuleNotFoundError: No module named 'bridge_engine.automation')
+/home/ubuntu/bridge-engine/venv/bin/python: Error while finding module specification for 'bridge_engine.automation.bridge_brain_daemon' (ModuleNotFoundError: No module named 'bridge_engine.automation')
+/home/ubuntu/bridge-engine/venv/bin/python: Error while finding module specification for 'bridge_engine.automation.bridge_brain_daemon' (ModuleNotFoundError: No module named 'bridge_engine.automation')
+/home/ubuntu/bridge-engine/venv/bin/python: Error while finding module specification for 'bridge_engine.automation.bridge_brain_daemon' (ModuleNotFoundError: No module named 'bridge_engine.automation')
+/home/ubuntu/bridge-engine/venv/bin/python: Error while finding module specification for 'bridge_engine.automation.bridge_brain_daemon' (ModuleNotFoundError: No module named 'bridge_engine.automation')
+/home/ubuntu/bridge-engine/venv/bin/python: Error while finding module specification for 'bridge_engine.automation.bridge_brain_daemon' (ModuleNotFoundError: No module named 'bridge_engine.automation')
+/home/ubuntu/bridge-engine/venv/bin/python: Error while finding module specification for 'bridge_engine.automation.bridge_brain_daemon' (ModuleNotFoundError: No module named 'bridge_engine.automation')
+/home/ubuntu/bridge-engine/venv/bin/python: Error while finding module specification for 'bridge_engine.automation.bridge_brain_daemon' (ModuleNotFoundError: No module named 'bridge_engine.automation')
+/home/ubuntu/bridge-engine/venv/bin/python: Error while finding module specification for 'bridge_engine.automation.bridge_brain_daemon' (ModuleNotFoundError: No module named 'bridge_engine.automation')
