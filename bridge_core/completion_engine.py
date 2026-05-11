@@ -94,6 +94,10 @@ SUPPORT_MODIFIERS: Dict[str, Dict[str, Any]] = {
         "max_words": 85,
         "rule": "Number actions and keep the sequence linear.",
     },
+    "professional": {
+        "max_words": 90,
+        "rule": "Use concise, direct language. Skip motivational softening. Frame each step as a decision or deliverable.",
+    },
 }
 
 

@@ -1,162 +1,601 @@
-import { useEffect, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { Button } from "../components/ui/Button";
-import { TextArea } from "../components/ui/Input";
-import { InteractionSurface } from "../components/runtime/InteractionSurface";
-import { runtimeApi, type RuntimeStep } from "../lib/runtimeApi";
-import styles from "../components/runtime/Runtime.module.css";
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { ApiError } from '../lib/runtimeApi';
+import {
+  continueSession,
+  exportSession,
+  fetchWorkspace,
+  rewriteSession,
+  type RuntimeStepPayload,
+  type WorkspaceEnvelope,
+} from '../lib/sessionApi';
+import {
+  frameTitle,
+  frameEmoji,
+  frameBlurb,
+  isProfessionalMode,
+  supportTitle,
+} from '../lib/onboardingOptions';
 
-const feedbackOptions = ["Helpful", "Not quite", "Too much", "Faster", "More visual", "More like this"];
-const exportFormats = ["Markdown", "checklist", "project plan", "outline"];
+type RewriteMode = 'make_easier' | 'break_smaller' | 'explain_differently' | 'give_example';
 
-export function WorkspacePage() {
-  const navigate = useNavigate();
-  const { workflowId = "" } = useParams();
-  const [step, setStep] = useState<RuntimeStep | null>(null);
-  const [response, setResponse] = useState("");
-  const [proof, setProof] = useState("");
+interface RewriteButton {
+  mode: RewriteMode;
+  label: string;
+  proLabel: string;
+  hint: string;
+}
+
+const REWRITE_BUTTONS: ReadonlyArray<RewriteButton> = [
+  { mode: 'make_easier', label: 'Make easier', proLabel: 'Reduce scope', hint: 'Shrink the next move.' },
+  { mode: 'break_smaller', label: 'Break smaller', proLabel: 'Decompose', hint: 'Split into micro-actions.' },
+  { mode: 'give_example', label: 'Give example', proLabel: 'Show example', hint: 'Show one before I try.' },
+  { mode: 'explain_differently', label: 'Explain differently', proLabel: 'Reframe', hint: 'Reframe through the interest.' },
+];
+
+type ArtifactPreview = WorkspaceEnvelope['artifact_preview'] & {
+  type?: string;
+  outline?: { introduction?: string; body_points?: string; draft_seed?: string; conclusion?: string };
+  cards?: Array<{ front?: string; back?: string }>;
+  files?: string[];
+  topic?: string;
+  project?: string;
+  sections?: Record<string, string | undefined | null>;
+};
+
+export default function WorkspacePage() {
+  const { workflowId } = useParams<{ workflowId: string }>();
+  const workspaceId = workflowId ?? '';
+
+  const [envelope, setEnvelope] = useState<WorkspaceEnvelope | null>(null);
+  const [draft, setDraft] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [exportMessage, setExportMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [helpNotice, setHelpNotice] = useState<string | null>(null);
+  const [exportText, setExportText] = useState<string | null>(null);
+  const [exportCopied, setExportCopied] = useState(false);
+  const [artifactOpen, setArtifactOpen] = useState(true);
+  const [planOpen, setPlanOpen] = useState(false);
 
-  const isComplete = useMemo(() => {
-    const status = String(step?.status ?? "").toLowerCase();
-    return status === "completed" || status === "exported";
-  }, [step?.status]);
-
-  async function loadNext() {
-    if (!workflowId) return;
-    setLoading(true);
-    setError("");
-    const result = await runtimeApi.getNext(workflowId);
-    setLoading(false);
-    if (!result.ok) {
-      setError(result.error);
+  const load = useCallback(async () => {
+    if (!workspaceId) {
+      setError('Missing session id.');
+      setLoading(false);
       return;
     }
-    setStep(result.data);
-  }
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchWorkspace(workspaceId);
+      setEnvelope(data);
+      setDraft('');
+    } catch (e) {
+      setError(formatApiError(e, 'Could not load this session.'));
+    } finally {
+      setLoading(false);
+    }
+  }, [workspaceId]);
 
   useEffect(() => {
-    void loadNext();
-  }, [workflowId]);
+    void load();
+  }, [load]);
 
-  async function sendFeedback(feedback: string) {
-    const result = await runtimeApi.sendFeedback(workflowId, feedback, step ?? undefined);
-    if (!result.ok) {
-      setError(result.error);
-      return;
+  const session = envelope?.workspace ?? envelope?.session ?? null;
+  const steps = (session?.steps ?? []) as RuntimeStepPayload[];
+  const currentIndex = Number(session?.current_step_index ?? 0);
+  const status = String(session?.status ?? 'active');
+  const isComplete = status === 'complete';
+  const currentStep = envelope?.current_step ?? steps[currentIndex] ?? null;
+  const nextPrompt = envelope?.next_prompt ?? null;
+  const intelligence = envelope?.intelligence ?? null;
+  const runtimeState = envelope?.runtime_state ?? null;
+  const artifactPreview = (envelope?.artifact_preview ?? {}) as ArtifactPreview;
+  const progress = envelope?.progress ?? { done: 0, total: steps.length, percent: 0 };
+  const task = String(session?.task ?? session?.title ?? '').trim();
+  const frame = (session?.frame ?? 'gaming') as string;
+  const supports = (session?.supports as string[] | undefined) ?? [];
+  const professional = isProfessionalMode(supports);
+
+  const liveCompletionRate = useMemo(() => {
+    if (typeof runtimeState?.completion_rate === 'number') return runtimeState.completion_rate;
+    if (typeof intelligence?.completion_rate === 'number') return intelligence.completion_rate;
+    if (progress.total) return Math.round((progress.done / progress.total) * 100);
+    return 0;
+  }, [runtimeState?.completion_rate, intelligence?.completion_rate, progress.done, progress.total]);
+
+  async function handleContinue() {
+    if (!workspaceId || busy || isComplete) return;
+    setBusy(true);
+    setError(null);
+    setHelpNotice(null);
+    try {
+      const data = await continueSession({ workspace_id: workspaceId, user_output: draft });
+      setEnvelope(data);
+      setDraft('');
+      setExportText(null);
+      setExportCopied(false);
+    } catch (e) {
+      setError(formatApiError(e, 'Could not save and continue.'));
+    } finally {
+      setBusy(false);
     }
-    await loadNext();
   }
 
-  async function submitProof() {
-    const result = await runtimeApi.submitProof(workflowId, proof);
-    if (!result.ok) {
-      setError(result.error);
-      return;
+  async function handleRewrite(mode: RewriteMode) {
+    if (!workspaceId || busy) return;
+    setBusy(true);
+    setError(null);
+    setHelpNotice(null);
+    try {
+      const data = await rewriteSession({ workspace_id: workspaceId, mode, frame });
+      setEnvelope(data);
+      const btn = REWRITE_BUTTONS.find((b) => b.mode === mode);
+      const label = professional ? btn?.proLabel : btn?.label;
+      setHelpNotice(`Rewrote with: ${label ?? mode}`);
+    } catch (e) {
+      setError(formatApiError(e, 'Adaptive help is not reachable right now.'));
+    } finally {
+      setBusy(false);
     }
-    setProof("");
-    await loadNext();
   }
 
-  async function exportLane(format: string) {
-    const result = await runtimeApi.exportWorkflow(workflowId, format);
-    if (!result.ok) {
-      setExportMessage("Export coming soon.");
-      return;
+  async function handleExport() {
+    if (!workspaceId || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const data = await exportSession({ workspace_id: workspaceId });
+      setExportText(data.markdown || data.plain_text || '');
+      setExportCopied(false);
+    } catch (e) {
+      setError(formatApiError(e, 'Could not generate export.'));
+    } finally {
+      setBusy(false);
     }
-    setExportMessage(result.data.url ?? result.data.content ?? "Export ready.");
   }
+
+  async function handleCopyExport() {
+    if (!exportText) return;
+    try {
+      await navigator.clipboard.writeText(exportText);
+      setExportCopied(true);
+      window.setTimeout(() => setExportCopied(false), 1800);
+    } catch {
+      setError('Clipboard not available. Select the text and copy manually.');
+    }
+  }
+
+  const tone = useTone(professional);
+  const fEmoji = frameEmoji(frame);
+  const fTitle = frameTitle(frame);
+  const fBlurb = frameBlurb(frame);
 
   return (
-    <div className={styles.page}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>Active task</h1>
-        <p className={styles.subtle}>workflow: {workflowId}</p>
+    <div className="session">
+      <header className="session__top">
+        <Link className="btn btn-quiet" to="/home">
+          ← Sessions
+        </Link>
+        <Link className="btn btn-quiet" to="/start">
+          New
+        </Link>
       </header>
 
-      {loading ? <p className={styles.subtle}>Loading next action…</p> : null}
+      {loading && !envelope ? <p className="muted small session__loading">Loading session…</p> : null}
+
       {error ? (
-        <div className={styles.panel}>
-          <div className={styles.error}>Backend unavailable. {error}</div>
-          <div className={styles.actions}>
-            <Button onClick={loadNext}>Retry</Button>
-            <Button variant="ghost" onClick={() => navigate("/lanes")}>Back to lanes</Button>
+        <div className="banner-gentle session__banner" role="status">
+          {error}{' '}
+          <button type="button" className="btn btn-quiet" onClick={() => void load()}>
+            Retry
+          </button>
+        </div>
+      ) : null}
+
+      {!envelope && !loading ? (
+        <div className="session__missing">
+          <h2 className="session-step__title">This session isn't available.</h2>
+          <p className="muted small">
+            The runtime couldn't find <code>{workspaceId}</code>. It may have been deleted, or the
+            backend isn't running.
+          </p>
+          <div className="row session__missing-actions">
+            <Link className="btn btn-primary" to="/start">
+              Start a new Bridge
+            </Link>
+            <Link className="btn" to="/home">
+              See recent sessions
+            </Link>
           </div>
         </div>
       ) : null}
 
-      {!loading && !error && step ? (
-        isComplete ? (
-          <div className={styles.completion}>
-            <div className={styles.check}>✓</div>
-            <h2 className={styles.title}>You finished this lane.</h2>
-            <p className={styles.subtle}>That counts. Export it if useful.</p>
-            <div className={styles.actions}>
-              {exportFormats.map((format) => (
-                <Button key={format} variant="ghost" onClick={() => exportLane(format)}>{format}</Button>
-              ))}
+      {envelope ? (
+        <>
+          <section className="session-identity" aria-label="Session identity">
+            <div className="session-identity__frame">
+              <span className="session-identity__frame-emoji" aria-hidden>
+                {fEmoji || '✨'}
+              </span>
+              <span className="session-identity__frame-text">
+                <span className="session-identity__frame-label">Through</span>
+                <span className="session-identity__frame-name">{fTitle}</span>
+              </span>
             </div>
-            {exportMessage ? <p className={styles.subtle}>{exportMessage}</p> : null}
-          </div>
-        ) : (
-          <div className={styles.stack}>
-            <section className={styles.panel}>
-              <div className={styles.stack}>
-                <div>
-                  <div className={styles.label}>Objective</div>
-                  <h2 className={styles.cardTitle}>{String(step.current_objective ?? step.objective ?? "Current objective")}</h2>
+            <h1 className="session-identity__task">{task || 'Untitled session'}</h1>
+            {fBlurb ? <p className="session-identity__sub">{fBlurb}</p> : null}
+            {progress.total > 0 ? (
+              <div className="session-identity__progress">
+                <div className="meter meter--ios">
+                  <span style={{ width: `${liveCompletionRate}%` }} />
                 </div>
-                <div>
-                  <div className={styles.label}>Current step</div>
-                  <p className={styles.subtle}>{String(step.current_step ?? step.step ?? "Ask the backend for the next action.")}</p>
-                </div>
-                <div>
-                  <div className={styles.label}>Why this matters</div>
-                  <p className={styles.subtle}>{String(step.why_this_matters ?? step.why ?? "This keeps the lane moving.")}</p>
-                </div>
-                <div className={styles.metrics}>
-                  <span>interaction: {String(step.interaction_type ?? "text_response")}</span>
-                  <span>confidence: {formatMetric(step.progress_confidence)}</span>
-                  <span>momentum: {formatMetric(step.momentum_score)}</span>
-                </div>
+                <span className="muted small">
+                  {progress.done}/{progress.total} · {liveCompletionRate}%
+                </span>
               </div>
-            </section>
+            ) : null}
+            {supports.length ? (
+              <p className="session-identity__supports muted small">
+                {supports.map((s) => supportTitle(s) ?? s).join(' · ')}
+              </p>
+            ) : null}
+          </section>
 
-            <InteractionSurface
-              interactionType={String(step.interaction_type ?? "text_response")}
-              value={response}
-              onChange={setResponse}
+          {isComplete ? (
+            <CompletionPanel
+              task={task}
+              onExport={() => void handleExport()}
+              exportText={exportText}
+              exportCopied={exportCopied}
+              onCopy={() => void handleCopyExport()}
+              busy={busy}
+              tone={tone}
             />
+          ) : (
+            <>
+              <section className="session-step">
+                <span className="session-step__eyebrow">{tone.rightNow}</span>
+                <h2 className="session-step__title">
+                  {currentStep?.title || nextPrompt?.title || tone.fallbackTitle}
+                </h2>
+                {currentStep?.why ? <p className="session-step__why">{currentStep.why}</p> : null}
+                <p className="session-step__prompt">
+                  {currentStep?.prompt || nextPrompt?.prompt || tone.fallbackPrompt}
+                </p>
+                {currentStep?.action ? (
+                  <p className="session-step__action">
+                    <span className="session-step__action-label">{tone.doneLabel}</span>
+                    {currentStep.action}
+                  </p>
+                ) : null}
+              </section>
 
-            <section className={styles.panel}>
-              <div className={styles.stack}>
-                <div className={styles.label}>Feedback</div>
-                <div className={styles.actions}>
-                  {feedbackOptions.map((item) => (
-                    <Button key={item} variant="ghost" onClick={() => sendFeedback(item)}>{item}</Button>
+              <section className="session-write">
+                <label className="session-write__label" htmlFor="session-draft">
+                  {tone.yourMove}
+                </label>
+                <textarea
+                  id="session-draft"
+                  className="session-write__textarea"
+                  rows={5}
+                  placeholder={tone.placeholder}
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  disabled={busy}
+                />
+                <div className="session-write__actions">
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-lg btn-block session-write__cta"
+                    onClick={() => void handleContinue()}
+                    disabled={busy}
+                  >
+                    {busy ? tone.saving : draft.trim() ? tone.saveContinue : tone.markContinue}
+                  </button>
+                  <span className="muted small session-write__hint">
+                    {draft.trim() ? `${draft.trim().length} characters saved.` : tone.emptyHint}
+                  </span>
+                </div>
+              </section>
+
+              <section className="session-help">
+                <span className="session-help__label">{tone.stuckLabel}</span>
+                <div className="session-help__grid">
+                  {REWRITE_BUTTONS.map((b) => (
+                    <button
+                      key={b.mode}
+                      type="button"
+                      className="btn session-help__btn"
+                      onClick={() => void handleRewrite(b.mode)}
+                      disabled={busy}
+                      title={b.hint}
+                    >
+                      {professional ? b.proLabel : b.label}
+                    </button>
                   ))}
                 </div>
-              </div>
-            </section>
+                {helpNotice ? (
+                  <p className="muted small session-help__notice">{helpNotice}</p>
+                ) : null}
+              </section>
+            </>
+          )}
 
-            <section className={styles.panel}>
-              <div className={styles.proof}>
-                <div className={styles.label}>Proof / checkpoint</div>
-                <TextArea value={proof} onChange={(e) => setProof(e.target.value)} placeholder="Text proof for now…" />
-                <div className={styles.demo}>Future upload proof placeholder.</div>
-                <Button disabled={!proof.trim()} onClick={submitProof}>Submit proof</Button>
-              </div>
-            </section>
-          </div>
-        )
+          <section className="session-artifact">
+            <button
+              type="button"
+              className="session-disclosure"
+              aria-expanded={artifactOpen}
+              onClick={() => setArtifactOpen((v) => !v)}
+            >
+              <span>{tone.buildingLabel}</span>
+              <span className="session-disclosure__chev">{artifactOpen ? '−' : '+'}</span>
+            </button>
+            {artifactOpen ? (
+              <ArtifactBody
+                preview={artifactPreview}
+                sections={session?.artifact as { sections?: Record<string, string> } | undefined}
+                emptyHint={tone.artifactEmpty}
+              />
+            ) : null}
+          </section>
+
+          <section className="session-plan">
+            <button
+              type="button"
+              className="session-disclosure"
+              aria-expanded={planOpen}
+              onClick={() => setPlanOpen((v) => !v)}
+            >
+              <span>{tone.planLabel}</span>
+              <span className="session-disclosure__chev">{planOpen ? '−' : '+'}</span>
+            </button>
+            {planOpen ? (
+              <ol className="session-plan__list">
+                {steps.map((s, idx) => {
+                  const done = s.status === 'done' || idx < currentIndex;
+                  const active = !done && idx === currentIndex;
+                  return (
+                    <li
+                      key={s.id ?? idx}
+                      className={`session-plan__li ${active ? 'session-plan__li--active' : ''} ${
+                        done ? 'session-plan__li--done' : ''
+                      }`}
+                    >
+                      <span className="session-plan__mark">{done ? '✓' : active ? '→' : '·'}</span>
+                      <span>{s.title || `Step ${idx + 1}`}</span>
+                    </li>
+                  );
+                })}
+              </ol>
+            ) : null}
+          </section>
+        </>
       ) : null}
     </div>
   );
 }
 
-function formatMetric(value: unknown) {
-  return typeof value === "number" ? value.toFixed(2) : "n/a";
+interface Tone {
+  rightNow: string;
+  yourMove: string;
+  doneLabel: string;
+  fallbackTitle: string;
+  fallbackPrompt: string;
+  placeholder: string;
+  saveContinue: string;
+  markContinue: string;
+  saving: string;
+  emptyHint: string;
+  stuckLabel: string;
+  buildingLabel: string;
+  planLabel: string;
+  artifactEmpty: string;
 }
 
+function useTone(professional: boolean): Tone {
+  if (professional) {
+    return {
+      rightNow: 'Current move',
+      yourMove: 'Your output',
+      doneLabel: 'Done = ',
+      fallbackTitle: 'Next move',
+      fallbackPrompt: 'Pick up where you left off.',
+      placeholder: 'Draft directly. Rough is fine — you can refine on the next step.',
+      saveContinue: 'Save & continue',
+      markContinue: 'Mark complete & continue',
+      saving: 'Saving…',
+      emptyHint: 'Empty is fine. Continue advances the session.',
+      stuckLabel: 'Reframe this step',
+      buildingLabel: 'Deliverable so far',
+      planLabel: 'Session plan',
+      artifactEmpty: 'Deliverable populates as you save each step.',
+    };
+  }
+  return {
+    rightNow: 'Right now',
+    yourMove: 'Your move',
+    doneLabel: 'Done = ',
+    fallbackTitle: 'Next move',
+    fallbackPrompt: 'Pick up where you left off.',
+    placeholder: 'Type something messy. One ugly sentence beats zero.',
+    saveContinue: 'Save & continue',
+    markContinue: 'Mark done & continue',
+    saving: 'Saving…',
+    emptyHint: 'Empty is fine — momentum still counts.',
+    stuckLabel: 'Stuck? Adapt this step',
+    buildingLabel: 'What you\u2019re building',
+    planLabel: 'Path',
+    artifactEmpty: 'Your artifact builds as you save each step.',
+  };
+}
+
+function ArtifactBody({
+  preview,
+  sections,
+  emptyHint,
+}: {
+  preview: ArtifactPreview;
+  sections?: { sections?: Record<string, string> };
+  emptyHint: string;
+}) {
+  const type = preview.type ?? 'general';
+  const liveSections = sections?.sections ?? {};
+  const hasLiveSections = Object.values(liveSections).some((v) => Boolean(v && String(v).trim()));
+
+  if (type === 'essay_outline') {
+    return <EssayOutline preview={preview} live={liveSections} emptyHint={emptyHint} />;
+  }
+  if (type === 'flashcards' || preview.cards) {
+    return <Flashcards preview={preview} emptyHint={emptyHint} />;
+  }
+  if (type === 'code_scaffold' || preview.files) {
+    return <CodeScaffold preview={preview} emptyHint={emptyHint} />;
+  }
+  if (hasLiveSections) {
+    return <LiveSections sections={liveSections} />;
+  }
+  return <p className="muted small session-artifact__empty">{emptyHint}</p>;
+}
+
+function EssayOutline({
+  preview,
+  live,
+  emptyHint,
+}: {
+  preview: ArtifactPreview;
+  live: Record<string, string | undefined | null>;
+  emptyHint: string;
+}) {
+  const outline = preview.outline ?? {};
+  const thesis = (live.thesis_seed as string | undefined) || outline.introduction || '';
+  const supports = (live.support_points as string | undefined) || outline.body_points || '';
+  const body = (live.body_paragraph_seed as string | undefined) || outline.draft_seed || '';
+  const closing = (live.draft_outline as string | undefined) || outline.conclusion || '';
+
+  if (!thesis && !supports && !body && !closing) {
+    return <p className="muted small session-artifact__empty">{emptyHint}</p>;
+  }
+
+  return (
+    <ul className="artifact-list">
+      <li>
+        <strong>Thesis seed</strong>
+        <span>{thesis || <em className="muted">drafting…</em>}</span>
+      </li>
+      <li>
+        <strong>Support points</strong>
+        <span>{supports || <em className="muted">drafting…</em>}</span>
+      </li>
+      <li>
+        <strong>Body seed</strong>
+        <span>{body || <em className="muted">drafting…</em>}</span>
+      </li>
+      <li>
+        <strong>Outline / closing</strong>
+        <span>{closing || <em className="muted">drafting…</em>}</span>
+      </li>
+    </ul>
+  );
+}
+
+function Flashcards({ preview, emptyHint }: { preview: ArtifactPreview; emptyHint: string }) {
+  const cards = preview.cards ?? [];
+  if (!cards.length) {
+    return <p className="muted small session-artifact__empty">{emptyHint}</p>;
+  }
+  return (
+    <ul className="artifact-list">
+      {cards.map((card, idx) => (
+        <li key={idx}>
+          <strong>{card.front || `Card ${idx + 1}`}</strong>
+          <span>{card.back || '—'}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function CodeScaffold({ preview, emptyHint }: { preview: ArtifactPreview; emptyHint: string }) {
+  const files = preview.files ?? [];
+  if (!files.length) {
+    return <p className="muted small session-artifact__empty">{emptyHint}</p>;
+  }
+  return (
+    <ul className="artifact-list artifact-list--code">
+      {files.map((f) => (
+        <li key={f}>
+          <code>{f}</code>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function LiveSections({ sections }: { sections: Record<string, string | undefined | null> }) {
+  const entries = Object.entries(sections).filter(([, v]) => v && String(v).trim());
+  return (
+    <ul className="artifact-list">
+      {entries.map(([name, value]) => (
+        <li key={name}>
+          <strong>{prettyKey(name)}</strong>
+          <span>{value as string}</span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function CompletionPanel({
+  task,
+  onExport,
+  exportText,
+  exportCopied,
+  onCopy,
+  busy,
+  tone,
+}: {
+  task: string;
+  onExport: () => void;
+  exportText: string | null;
+  exportCopied: boolean;
+  onCopy: () => void;
+  busy: boolean;
+  tone: Tone;
+}) {
+  return (
+    <section className="session-complete">
+      <span className="session-step__eyebrow">{tone.rightNow}</span>
+      <h2 className="session-step__title">You finished &ldquo;{task}&rdquo;.</h2>
+      <p className="muted">Save what you made. Copy it. Use it. Start the next one when you&rsquo;re ready.</p>
+      <div className="session-complete__actions">
+        <button type="button" className="btn btn-primary btn-lg" onClick={onExport} disabled={busy}>
+          {exportText ? 'Refresh export' : 'Generate export'}
+        </button>
+        {exportText ? (
+          <button type="button" className="btn" onClick={onCopy} disabled={busy}>
+            {exportCopied ? 'Copied' : 'Copy markdown'}
+          </button>
+        ) : null}
+        <Link className="btn btn-quiet" to="/start">
+          Start another Bridge
+        </Link>
+      </div>
+      {exportText ? <pre className="export-preview">{exportText}</pre> : null}
+    </section>
+  );
+}
+
+function prettyKey(key: string): string {
+  return key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatApiError(e: unknown, fallback: string): string {
+  if (e instanceof ApiError) {
+    if (e.status === 0) return 'Backend not reachable on port 6060. Start `python app_runtime.py`.';
+    return e.message || fallback;
+  }
+  if (e instanceof Error) return e.message;
+  return fallback;
+}

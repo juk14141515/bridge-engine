@@ -1,16 +1,34 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ApiError } from '../lib/runtimeApi';
 import { fetchRecentWorkspaces, type RecentWorkspaceSummary } from '../lib/sessionApi';
+import {
+  FRAME_CHIPS,
+  SURPRISE_FRAME_ID,
+  frameTitle,
+  frameEmoji,
+} from '../lib/onboardingOptions';
 
 function formatUpdated(iso?: string): string {
   if (!iso) return '';
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  const now = Date.now();
+  const diff = now - d.getTime();
+  const minute = 60_000;
+  const hour = 60 * minute;
+  const day = 24 * hour;
+  if (diff < minute) return 'just now';
+  if (diff < hour) return `${Math.floor(diff / minute)}m ago`;
+  if (diff < day) return `${Math.floor(diff / hour)}h ago`;
+  if (diff < 7 * day) return `${Math.floor(diff / day)}d ago`;
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 export default function HomePage() {
+  const navigate = useNavigate();
+  const [task, setTask] = useState('');
+  const [frame, setFrame] = useState<string | null>(null);
   const [workspaces, setWorkspaces] = useState<RecentWorkspaceSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,9 +43,9 @@ export default function HomePage() {
       const msg =
         e instanceof ApiError
           ? e.status === 0
-            ? 'Backend not reachable. Start Flask on http://127.0.0.1:6060 and retry.'
+            ? 'Backend not reachable. Start it on port 6060.'
             : e.message
-          : 'Something went wrong loading workspaces.';
+          : 'Could not load sessions.';
       setError(msg);
     } finally {
       setLoading(false);
@@ -38,98 +56,148 @@ export default function HomePage() {
     void load();
   }, [load]);
 
-  return (
-    <>
-      <header className="top-bar">
-        <div className="row" style={{ alignItems: 'center', gap: 14 }}>
-          <span className="brand brand--soft">Bridge</span>
-          <Link className="btn btn-quiet" style={{ fontSize: 13 }} to="/">
-            About
-          </Link>
-        </div>
-        <Link className="btn btn-quiet" to="/new">
-          Advanced form
-        </Link>
-      </header>
+  function start() {
+    const t = task.trim();
+    if (t.length < 3) {
+      navigate('/start', frame ? { state: { initialFrame: frame } } : undefined);
+      return;
+    }
+    navigate('/start', { state: { initialTask: t, initialFrame: frame ?? undefined } });
+  }
 
-      <h1 className="h1 home-hero-title">Finish hard things through what you already enjoy.</h1>
-      <p className="lede home-hero-lede">
-        Bridge is an adaptive completion workspace—not a static checklist. Each session tracks momentum,
-        suggests the next move, grows an artifact you can see, and persists on this machine.
+  return (
+    <div className="home-page">
+      <h1 className="home-title">Turn hard things into something your brain can enter.</h1>
+      <p className="home-lede">
+        One input, one frame, one session. Bridge translates the hard thing through something you
+        already enjoy and walks you through it.
       </p>
 
-      <div className="surface home-actions-panel">
-        <div className="home-actions-row">
-          <div>
-            <h2 className="home-section-heading">Start</h2>
-            <p className="muted small" style={{ margin: '4px 0 0' }}>
-              Guided setup, then a live workspace with continue, rewrite, and export.
-            </p>
-          </div>
-          <div className="row">
-            <Link className="btn btn-primary btn-lg" to="/start">
-              New Bridge
-            </Link>
-            <button type="button" className="btn btn-secondary" onClick={() => void load()} disabled={loading}>
-              {loading ? 'Refreshing…' : 'Refresh list'}
-            </button>
-          </div>
-        </div>
+      <textarea
+        className="home-input"
+        rows={2}
+        placeholder="What do you want to learn, finish, or get through?"
+        value={task}
+        onChange={(e) => setTask(e.target.value)}
+        aria-label="What do you want to learn, finish, or get through?"
+      />
+
+      <div className="frame-chip-row">
+        {FRAME_CHIPS.map((f) => (
+          <button
+            key={f.id}
+            type="button"
+            className={`frame-chip ${frame === f.id ? 'frame-chip--active' : ''}`}
+            onClick={() => setFrame((prev) => (prev === f.id ? null : f.id))}
+            aria-pressed={frame === f.id}
+          >
+            <span className="frame-chip__emoji" aria-hidden>
+              {f.emoji}
+            </span>
+            <span className="frame-chip__title">{f.title}</span>
+          </button>
+        ))}
+        <button
+          type="button"
+          className={`frame-chip frame-chip--surprise ${frame === SURPRISE_FRAME_ID ? 'frame-chip--active' : ''}`}
+          onClick={() =>
+            setFrame((prev) => (prev === SURPRISE_FRAME_ID ? null : SURPRISE_FRAME_ID))
+          }
+          aria-pressed={frame === SURPRISE_FRAME_ID}
+        >
+          <span className="frame-chip__emoji" aria-hidden>
+            ✨
+          </span>
+          <span className="frame-chip__title">Surprise me</span>
+        </button>
       </div>
 
-      <div className="surface home-recent-panel">
-        <h2 className="home-section-heading">Recent workspaces</h2>
+      <div className="home-cta-row">
+        <button
+          type="button"
+          className="btn btn-primary btn-lg btn-block home-cta-primary"
+          onClick={start}
+        >
+          Start Bridge
+        </button>
+        <Link className="btn btn-quiet home-cta-customize" to="/start">
+          Customize more
+        </Link>
+      </div>
+
+      <section className="recent-section">
+        <header className="recent-section__head">
+          <h2 className="recent-section__title">Recent sessions</h2>
+          {workspaces.length ? (
+            <button type="button" className="btn btn-quiet" onClick={() => void load()} disabled={loading}>
+              {loading ? 'Refreshing…' : 'Refresh'}
+            </button>
+          ) : null}
+        </header>
+
         {error ? (
           <div className="banner-gentle" role="status">
-            {error}
+            {error}{' '}
+            <button type="button" className="btn btn-quiet" onClick={() => void load()}>
+              Retry
+            </button>
           </div>
         ) : null}
-        {loading && !workspaces.length ? (
-          <p className="muted small">Loading…</p>
-        ) : null}
+
+        {loading && !workspaces.length ? <p className="muted small">Loading…</p> : null}
+
         {!loading && !workspaces.length && !error ? (
-          <p className="muted small">
-            Nothing yet. <Link to="/start">Start a Bridge</Link>.
+          <p className="muted small recent-empty">
+            No sessions yet. Type something above and start one.
           </p>
         ) : null}
-        <div className="home-lane-list">
+
+        <ul className="recent-list">
           {workspaces.map((w) => {
             const done = w.progress_done ?? 0;
             const total = w.progress_total ?? 0;
             const pct = total ? Math.round((done / total) * 100) : 0;
             const updated = formatUpdated(w.updated_at);
+            const taskLabel = (w.task && w.task.trim()) || (w.title && w.title.trim()) || 'Untitled';
+            const fEmoji = frameEmoji(w.frame);
+            const fTitle = frameTitle(w.frame);
+            const isComplete = (w.status ?? '').toLowerCase() === 'complete';
             return (
-              <Link key={w.id} className="home-lane-card" to={`/workspace/${w.id}`}>
-                <div className="home-lane-card__top">
-                  <strong className="home-lane-card__title">{w.title || w.task || 'Untitled'}</strong>
-                  <span className="home-lane-card__badge">{w.frame ?? '—'}</span>
-                </div>
-                <div className="home-lane-card__meta muted small">
-                  {w.status ?? 'active'}
-                  {updated ? ` · Updated ${updated}` : ''}
-                </div>
-                {total > 0 ? (
-                  <div className="home-lane-progress">
-                    <div className="meter meter--thin">
-                      <span style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="muted small">
-                      {done}/{total} checkpoints
+              <li key={w.id}>
+                <Link className="recent-card" to={`/workspace/${w.id}`}>
+                  <div className="recent-card__main">
+                    <span className="recent-card__title">{taskLabel}</span>
+                    <span className="recent-card__meta">
+                      {fEmoji ? (
+                        <>
+                          <span aria-hidden>{fEmoji}</span> {fTitle}
+                        </>
+                      ) : (
+                        fTitle || '—'
+                      )}
+                      {updated ? <span className="recent-card__dot"> · </span> : null}
+                      {updated}
+                      {isComplete ? (
+                        <span className="recent-card__pill recent-card__pill--done">Finished</span>
+                      ) : null}
                     </span>
                   </div>
-                ) : null}
-              </Link>
+                  {total > 0 && !isComplete ? (
+                    <div className="recent-card__progress">
+                      <div className="meter meter--thin">
+                        <span style={{ width: `${pct}%` }} />
+                      </div>
+                      <span className="muted small recent-card__progress-label">
+                        {done}/{total}
+                      </span>
+                    </div>
+                  ) : null}
+                </Link>
+              </li>
             );
           })}
-        </div>
-      </div>
-
-      <details className="fine-print">
-        <summary>Local dev</summary>
-        <p className="muted small" style={{ marginTop: 10 }}>
-          API proxy → port 6060. Workspaces: SQLite <code>data/bridge_engine.db</code> via the runtime API.
-        </p>
-      </details>
-    </>
+        </ul>
+      </section>
+    </div>
   );
 }

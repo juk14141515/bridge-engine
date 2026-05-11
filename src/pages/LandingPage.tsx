@@ -1,84 +1,99 @@
-import { useNavigate } from "react-router-dom";
-import { Button } from "../components/ui/Button";
-import { TextArea } from "../components/ui/Input";
-import styles from "./LandingPage.module.css";
-import { useState } from "react";
-import { TapOptions } from "../components/app/TapOptions";
+import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { FRAME_CHIPS, SURPRISE_FRAME_ID } from '../lib/onboardingOptions';
+import styles from './LandingPage.module.css';
+
+const examples = [
+  { hard: 'English essay', through: 'Gaming', emoji: '🎮' },
+  { hard: 'Learn Spanish', through: 'Music', emoji: '🎧' },
+  { hard: 'Finish my project', through: 'Systems', emoji: '🧠' },
+  { hard: 'Strategy memo', through: 'Investing', emoji: '📈' },
+  { hard: 'Hard conversation', through: 'Care', emoji: '🤝' },
+];
 
 export function LandingPage() {
   const navigate = useNavigate();
-  const [stuck, setStuck] = useState("");
-  const [showTyping, setShowTyping] = useState(false);
+  const [task, setTask] = useState('');
+  const [frame, setFrame] = useState<string | null>(null);
 
-  const quick = [
-    { id: "starting", label: "Starting", helper: "I care. I just can’t get in." },
-    { id: "overwhelm", label: "Overwhelmed", helper: "Too much at once." },
-    { id: "avoid", label: "Avoiding it", helper: "I bounce off it." },
-    { id: "focus", label: "Focusing", helper: "I drift when I try." },
-    { id: "recovery", label: "Low fuel", helper: "I’m tired / depleted." },
-  ] as const;
+  function startNow() {
+    const t = task.trim();
+    if (t.length < 3) {
+      navigate('/start', { state: frame ? { initialFrame: frame } : undefined });
+      return;
+    }
+    navigate('/start', { state: { initialTask: t, initialFrame: frame ?? undefined } });
+  }
 
   return (
     <div className={styles.wrap}>
       <div className={styles.inner}>
-        <h1 className={styles.h1}>Bridge Engine</h1>
-        <p className={styles.p}>Turn stuck into one step your brain can enter.</p>
+        <h1 className={styles.h1}>Turn hard things into something your brain can enter.</h1>
         <p className={styles.p}>
-          Bridge connects what you need to do with what already pulls your attention, then shrinks the task until starting feels possible.
+          Drop in something you want to learn, finish, or get through. Bridge translates it
+          through something you already enjoy — and walks you through it.
         </p>
-        <div className={styles.ctaRow}>
-          <Button size="lg" onClick={() => navigate("/task/new")}>Start</Button>
-          <Button variant="ghost" onClick={() => navigate("/lanes")}>Continue</Button>
-          <Button variant="ghost" onClick={() => navigate("/settings")}>Login</Button>
-          <Button variant="ghost" onClick={() => navigate("/settings")}>Sign up</Button>
-        </div>
 
-        <TapOptions
-          options={[...quick]}
-          onPick={(id) => {
-            const seed =
-              id === "starting"
-                ? "I keep trying to start, but I bounce off it."
-                : id === "overwhelm"
-                  ? "It feels like too much at once."
-                  : id === "avoid"
-                    ? "I keep avoiding it even though I care."
-                    : id === "focus"
-                      ? "I can’t stay mentally in it."
-                      : "I’m low on fuel and it feels heavy.";
-            navigate("/app", { state: { initialStuckText: seed } });
-          }}
-          ariaLabel="Quick start options"
+        <textarea
+          className={styles.textarea}
+          rows={3}
+          placeholder="What do you want to learn, finish, or get through?"
+          value={task}
+          onChange={(e) => setTask(e.target.value)}
+          aria-label="What do you want to learn, finish, or get through?"
         />
 
-        {!showTyping ? (
-          <button type="button" className={styles.typeToggle} onClick={() => setShowTyping(true)}>
-            Or type what it is
-          </button>
-        ) : (
-          <div className={styles.input}>
-            <TextArea
-              value={stuck}
-              onChange={(e) => setStuck(e.target.value)}
-              placeholder="If you can: one sentence is enough."
-              aria-label="What feels hard to start"
-            />
-          </div>
-        )}
-
-        {showTyping ? (
-          <div className={styles.ctaRow}>
-            <Button
-              size="lg"
-              disabled={!stuck.trim()}
-              onClick={() => navigate("/app", { state: { initialStuckText: stuck } })}
+        <div className={styles.chipRow}>
+          {FRAME_CHIPS.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              className={`frame-chip ${frame === f.id ? 'frame-chip--active' : ''}`}
+              onClick={() => setFrame((prev) => (prev === f.id ? null : f.id))}
+              aria-pressed={frame === f.id}
             >
-              Continue
-            </Button>
-          </div>
-        ) : null}
+              <span className="frame-chip__emoji" aria-hidden>
+                {f.emoji}
+              </span>
+              <span className="frame-chip__title">{f.title}</span>
+            </button>
+          ))}
+          <button
+            type="button"
+            className={`frame-chip frame-chip--surprise ${frame === SURPRISE_FRAME_ID ? 'frame-chip--active' : ''}`}
+            onClick={() =>
+              setFrame((prev) => (prev === SURPRISE_FRAME_ID ? null : SURPRISE_FRAME_ID))
+            }
+            aria-pressed={frame === SURPRISE_FRAME_ID}
+          >
+            <span className="frame-chip__emoji" aria-hidden>
+              ✨
+            </span>
+            <span className="frame-chip__title">Surprise me</span>
+          </button>
+        </div>
+
+        <div className={styles.ctaRow}>
+          <button type="button" className="btn btn-primary btn-lg" onClick={startNow}>
+            Start Bridge
+          </button>
+          <button type="button" className="btn btn-quiet" onClick={() => navigate('/home')}>
+            Continue a session
+          </button>
+        </div>
+
+        <ul className={styles.exampleStrip}>
+          {examples.map((ex) => (
+            <li key={ex.hard} className={styles.exampleItem}>
+              <span className={styles.exampleHard}>{ex.hard}</span>
+              <span className={styles.exampleArrow}>→</span>
+              <span className={styles.exampleThrough}>
+                <span aria-hidden>{ex.emoji}</span> {ex.through}
+              </span>
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   );
 }
-

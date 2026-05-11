@@ -45,8 +45,8 @@ class BridgeSqlStore:
                 );
 
                 CREATE TABLE IF NOT EXISTS workspace_steps (
-                    id TEXT PRIMARY KEY,
                     workspace_id TEXT NOT NULL,
+                    id TEXT NOT NULL,
                     step_index INTEGER NOT NULL,
                     title TEXT NOT NULL,
                     prompt TEXT NOT NULL,
@@ -58,6 +58,7 @@ class BridgeSqlStore:
                     help_variants_json TEXT DEFAULT '{}',
                     created_at TEXT NOT NULL,
                     completed_at TEXT,
+                    PRIMARY KEY (workspace_id, id),
                     FOREIGN KEY(workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
                 );
 
@@ -81,6 +82,41 @@ class BridgeSqlStore:
                 CREATE INDEX IF NOT EXISTS idx_events_workspace ON workspace_events(workspace_id, created_at DESC);
                 """
             )
+            # One-time migration: older databases used `id TEXT PRIMARY KEY` on
+            # workspace_steps, which broke when two workspaces both had step
+            # ids like "s1". Detect that legacy schema and rebuild the table
+            # with the composite primary key.
+            try:
+                cols = conn.execute("PRAGMA table_info(workspace_steps)").fetchall()
+                pk_cols = {row["name"] for row in cols if row["pk"]}
+                if pk_cols == {"id"}:
+                    conn.executescript(
+                        """
+                        DROP TABLE workspace_steps;
+                        CREATE TABLE workspace_steps (
+                            workspace_id TEXT NOT NULL,
+                            id TEXT NOT NULL,
+                            step_index INTEGER NOT NULL,
+                            title TEXT NOT NULL,
+                            prompt TEXT NOT NULL,
+                            why TEXT DEFAULT '',
+                            action TEXT DEFAULT '',
+                            output_slot TEXT DEFAULT '',
+                            status TEXT DEFAULT 'pending',
+                            user_output TEXT DEFAULT '',
+                            help_variants_json TEXT DEFAULT '{}',
+                            created_at TEXT NOT NULL,
+                            completed_at TEXT,
+                            PRIMARY KEY (workspace_id, id),
+                            FOREIGN KEY(workspace_id) REFERENCES workspaces(id) ON DELETE CASCADE
+                        );
+                        CREATE INDEX IF NOT EXISTS idx_steps_workspace ON workspace_steps(workspace_id, step_index);
+                        """
+                    )
+            except sqlite3.DatabaseError:
+                # If introspection fails, ignore — the table will be created
+                # fresh on next use.
+                pass
 
     def save_workspace(self, workspace: Dict[str, Any]) -> str:
         now = datetime.utcnow().isoformat()
