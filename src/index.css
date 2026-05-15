@@ -1102,6 +1102,17 @@ textarea.field {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
 }
 
+.session-step--dominant {
+  border-color: rgba(125, 215, 178, 0.38);
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.2),
+    0 0 0 1px rgba(125, 215, 178, 0.08);
+}
+
+.session-step--dominant .session-step__prompt--live {
+  font-size: 17px;
+}
+
 .session-step__eyebrow {
   font-size: 11px;
   font-weight: 600;
@@ -1125,6 +1136,17 @@ textarea.field {
   font-size: 14px;
   color: var(--muted);
   line-height: 1.55;
+}
+
+.session-step__continuity {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-style: normal;
+  opacity: 0.9;
+}
+
+.session-identity__reward {
+  margin: 8px 0 0;
 }
 
 .session-step__prompt {

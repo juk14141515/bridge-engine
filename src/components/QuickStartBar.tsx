@@ -22,12 +22,15 @@ export function QuickStartBar({
     onError?.(null);
     setBusyId(presetId);
     try {
-      const { workspaceId, ribbon } = await openBridgeSession({
+      const { workspaceId, ribbon, initialContract } = await openBridgeSession({
         task,
         frame,
         supports: supports?.length ? supports : undefined,
       });
-      navigate(`/workspace/${workspaceId}`, { replace: true, state: { entryRibbon: ribbon } });
+      navigate(`/workspace/${workspaceId}`, {
+        replace: true,
+        state: { entryRibbon: ribbon, initialContract },
+      });
     } catch (e) {
       onError?.(formatUserApiError(e, 'Could not start. Try again.'));
     } finally {

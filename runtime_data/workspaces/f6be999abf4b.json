@@ -1,0 +1,152 @@
+{
+  "id": "f6be999abf4b",
+  "task": "I dislike English, love videogames, and need to write an essay.",
+  "frame": "gaming",
+  "supports": [
+    "step_by_step"
+  ],
+  "user_words": "I dislike English, love videogames, and need to write an essay.",
+  "category": "essay_writing",
+  "status": "active",
+  "current_step_index": 0,
+  "steps": [
+    {
+      "id": "s1",
+      "title": "Quest 1: Open the map",
+      "prompt": "Write one messy sentence about what I dislike English, love videogames, and need to write an essay. is really about.\n\nSupport style: Number actions and keep the sequence linear.",
+      "why": "This turns blank-page pressure into first XP.",
+      "action": "Create a rough thesis seed for I dislike English, love videogames, and need to write an essay..",
+      "output_slot": "thesis_seed",
+      "status": "active",
+      "user_output": "",
+      "help_variants": {
+        "make_easier": "Do only the first 60 seconds: Create a rough thesis seed for I dislike English, love videogames, and need to write an essay... Stop after the smallest visible mark.",
+        "example": "Example: This paper is really about how pressure changes people.",
+        "explain_differently": "Think of it as one quest, not the whole project. Your only job is: Create a rough thesis seed for I dislike English, love videogames, and need to write an essay..",
+        "break_smaller": "1) Open the place this belongs. 2) Type one ugly line. 3) Save it. That counts toward: Create a rough thesis seed for I dislike English, love videogames, and need to write an essay.."
+      },
+      "created_at": "2026-05-15T09:10:47.366713",
+      "completed_at": null
+    },
+    {
+      "id": "s2",
+      "title": "Quest 2: Collect useful gear",
+      "prompt": "List 3 possible points or examples. They can be ugly.\n\nSupport style: Number actions and keep the sequence linear.",
+      "why": "Support points become the inventory you use later.",
+      "action": "Create three support points for I dislike English, love videogames, and need to write an essay..",
+      "output_slot": "support_points",
+      "status": "pending",
+      "user_output": "",
+      "help_variants": {
+        "make_easier": "Do only the first 60 seconds: Create three support points for I dislike English, love videogames, and need to write an essay... Stop after the smallest visible mark.",
+        "example": "Point 1: cause. Point 2: effect. Point 3: counterargument.",
+        "explain_differently": "Think of it as one quest, not the whole project. Your only job is: Create three support points for I dislike English, love videogames, and need to write an essay..",
+        "break_smaller": "1) Open the place this belongs. 2) Type one ugly line. 3) Save it. That counts toward: Create three support points for I dislike English, love videogames, and need to write an essay.."
+      },
+      "created_at": "2026-05-15T09:10:47.366736",
+      "completed_at": null
+    },
+    {
+      "id": "s3",
+      "title": "Quest 3: Build the first room",
+      "prompt": "Turn one point into 3 rough sentences: claim, evidence idea, explanation.\n\nSupport style: Number actions and keep the sequence linear.",
+      "why": "One paragraph proves the essay can exist.",
+      "action": "Draft one body paragraph piece for I dislike English, love videogames, and need to write an essay..",
+      "output_slot": "body_paragraph_seed",
+      "status": "pending",
+      "user_output": "",
+      "help_variants": {
+        "make_easier": "Do only the first 60 seconds: Draft one body paragraph piece for I dislike English, love videogames, and need to write an essay... Stop after the smallest visible mark.",
+        "example": "Claim: ___. Evidence: ___. This matters because ___.",
+        "explain_differently": "Think of it as one quest, not the whole project. Your only job is: Draft one body paragraph piece for I dislike English, love videogames, and need to write an essay..",
+        "break_smaller": "1) Open the place this belongs. 2) Type one ugly line. 3) Save it. That counts toward: Draft one body paragraph piece for I dislike English, love videogames, and need to write an essay.."
+      },
+      "created_at": "2026-05-15T09:10:47.366750",
+      "completed_at": null
+    },
+    {
+      "id": "s4",
+      "title": "Quest 4: Boss fight draft",
+      "prompt": "Combine the thesis seed and paragraph seed into a mini draft outline.\n\nSupport style: Number actions and keep the sequence linear.",
+      "why": "The outline becomes a finishable artifact instead of scattered thoughts.",
+      "action": "Create the first complete outline for the boss fight.",
+      "output_slot": "draft_outline",
+      "status": "pending",
+      "user_output": "",
+      "help_variants": {
+        "make_easier": "Do only the first 60 seconds: Create the first complete outline for the boss fight.. Stop after the smallest visible mark.",
+        "example": "Intro \u2192 Point 1 \u2192 Point 2 \u2192 Point 3 \u2192 Conclusion.",
+        "explain_differently": "Think of it as one quest, not the whole project. Your only job is: Create the first complete outline for the boss fight.",
+        "break_smaller": "1) Open the place this belongs. 2) Type one ugly line. 3) Save it. That counts toward: Create the first complete outline for the boss fight."
+      },
+      "created_at": "2026-05-15T09:10:47.366759",
+      "completed_at": null
+    }
+  ],
+  "artifact": {
+    "task": "I dislike English, love videogames, and need to write an essay.",
+    "frame": "gaming",
+    "supports": [
+      "step_by_step"
+    ],
+    "sections": {},
+    "export_formats": [
+      "markdown",
+      "plain_text",
+      "checklist"
+    ],
+    "created_at": "2026-05-15T09:10:47.366766",
+    "category": "essay_writing",
+    "type": "document_draft",
+    "final_output": "",
+    "updated_at": "2026-05-15T09:10:47.366998"
+  },
+  "events": [
+    {
+      "id": "ad2f5d45c380",
+      "kind": "session_created",
+      "payload": {
+        "frame": "gaming",
+        "supports": [
+          "step_by_step"
+        ]
+      },
+      "created_at": "2026-05-15T09:10:47.366784"
+    },
+    {
+      "id": "290f32001c3b",
+      "kind": "session_created_v2",
+      "payload": {
+        "category": "essay_writing",
+        "frame": "gaming"
+      },
+      "created_at": "2026-05-15T09:10:47.367031"
+    }
+  ],
+  "created_at": "2026-05-15T09:10:47.366643",
+  "updated_at": "2026-05-15T09:10:47.366656",
+  "title": "I dislike English, love videogames, and need to write an essay.",
+  "category_info": {
+    "label": "Essay / writing",
+    "artifact_type": "document_draft",
+    "final_output": "polished draft",
+    "intent": "Turn scattered thoughts into a structured written piece."
+  },
+  "interest_frame": "gaming",
+  "runtime_state": {
+    "mode": "guided_completion",
+    "status": "active",
+    "current_step_index": 0,
+    "completion_rate": 0,
+    "rewrite_count": 0,
+    "category": "essay_writing",
+    "frame": "gaming",
+    "updated_at": "2026-05-15T09:10:47.366656",
+    "engagement_state": "engaged",
+    "high_friction": false,
+    "high_momentum": false
+  },
+  "interests": [
+    "gaming"
+  ]
+}

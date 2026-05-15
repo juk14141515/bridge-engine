@@ -88,14 +88,14 @@ export default function StartPage() {
     setBusy(true);
     setError(null);
     try {
-      const { workspaceId, ribbon } = await openBridgeSession({
+      const { workspaceId, ribbon, initialContract } = await openBridgeSession({
         task: trimmed,
         frame,
         supports: supportList.length ? supportList : undefined,
       });
       navigate(`/workspace/${workspaceId}`, {
         replace: true,
-        state: { entryRibbon: ribbon },
+        state: { entryRibbon: ribbon, initialContract },
       });
     } catch (e) {
       setError(formatUserApiError(e, 'Could not start. Try again.'));

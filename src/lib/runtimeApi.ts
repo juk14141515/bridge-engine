@@ -68,8 +68,143 @@ export async function fetchJson<T = unknown>(
 }
 
 // ---------------------------------------------------------------------------
+// Master runtime API (backend-runtime-v2)
+// ---------------------------------------------------------------------------
+
+import { normalizeFrameForSession } from './frameNormalize';
+import {
+  normalizeRuntimeResponse,
+  type NormalizedRuntimeContract,
+  type RuntimeWorkspace,
+} from './runtimeContract';
+
+export type { NormalizedRuntimeContract, RuntimeWorkspace };
+
+export type RewriteMode = 'make_easier' | 'break_smaller' | 'give_example' | 'explain_differently';
+
+export type ExportFormat = 'markdown' | 'plain_text' | 'checklist';
+
+export interface CreateSessionPayload {
+  task: string;
+  frame?: string;
+  interests?: string[];
+  learning_preferences?: string[];
+  supports?: string[];
+  profile?: Record<string, unknown>;
+  context?: Record<string, unknown>;
+  user_words?: string;
+  category?: string;
+}
+
+export interface RuntimeExportResult {
+  ok: boolean;
+  format: string;
+  markdown: string;
+  plain_text: string;
+  content?: string;
+  filename?: string;
+  title?: string;
+}
+
+export interface RecentWorkspaceSummary {
+  id: string;
+  title?: string;
+  task?: string;
+  frame?: string;
+  status?: string;
+  current_step_index?: number;
+  updated_at?: string;
+  progress_done?: number;
+  progress_total?: number;
+}
+
+function toContract(raw: Record<string, unknown>): NormalizedRuntimeContract {
+  return normalizeRuntimeResponse(raw);
+}
+
+export async function createSession(payload: CreateSessionPayload): Promise<NormalizedRuntimeContract> {
+  const frame = normalizeFrameForSession(payload.frame);
+  const interests =
+    payload.interests?.length ? payload.interests : frame ? [frame] : undefined;
+  const raw = await fetchJson<Record<string, unknown>>('/api/session/create', {
+    method: 'POST',
+    body: JSON.stringify({ ...payload, frame, interests }),
+  });
+  return toContract(raw);
+}
+
+export async function continueSession(
+  workspaceId: string,
+  userOutput: string,
+  extras?: { profile?: Record<string, unknown>; context?: Record<string, unknown> },
+): Promise<NormalizedRuntimeContract> {
+  const raw = await fetchJson<Record<string, unknown>>('/api/session/continue', {
+    method: 'POST',
+    body: JSON.stringify({
+      workspace_id: workspaceId,
+      user_output: userOutput,
+      ...extras,
+    }),
+  });
+  return toContract(raw);
+}
+
+export async function rewriteSession(
+  workspaceId: string,
+  mode: RewriteMode,
+  extras?: { frame?: string },
+): Promise<NormalizedRuntimeContract> {
+  const frame = extras?.frame ? normalizeFrameForSession(extras.frame) : undefined;
+  const raw = await fetchJson<Record<string, unknown>>('/api/session/rewrite', {
+    method: 'POST',
+    body: JSON.stringify({
+      workspace_id: workspaceId,
+      mode,
+      frame,
+    }),
+  });
+  return toContract(raw);
+}
+
+export async function exportSession(
+  workspaceId: string,
+  format: ExportFormat = 'markdown',
+  workspace?: RuntimeWorkspace,
+): Promise<RuntimeExportResult> {
+  return fetchJson<RuntimeExportResult>('/api/session/export', {
+    method: 'POST',
+    body: JSON.stringify({
+      workspace_id: workspaceId,
+      format,
+      workspace,
+      session: workspace,
+    }),
+  });
+}
+
+export async function getWorkspace(id: string): Promise<NormalizedRuntimeContract> {
+  const raw = await fetchJson<Record<string, unknown>>(`/api/workspace/${encodeURIComponent(id)}`);
+  return toContract(raw);
+}
+
+export async function getRecentWorkspaces(limit = 20): Promise<{
+  ok: boolean;
+  workspaces: RecentWorkspaceSummary[];
+}> {
+  return fetchJson(`/api/workspaces/recent?limit=${limit}`);
+}
+
+export async function saveWorkspace(workspace: RuntimeWorkspace): Promise<NormalizedRuntimeContract> {
+  const raw = await fetchJson<Record<string, unknown>>('/api/workspace/save', {
+    method: 'POST',
+    body: JSON.stringify({ workspace }),
+  });
+  return toContract(raw);
+}
+
+// ---------------------------------------------------------------------------
 // Legacy helpers kept for backwards compatibility with older pages
-// (LanesPage, NewTaskPage). The new runtime lives in `sessionApi.ts`.
+// (LanesPage, NewTaskPage).
 // ---------------------------------------------------------------------------
 
 const LEGACY_BASE_URL = ENV_BASE || "http://127.0.0.1:6060";

@@ -1,4 +1,5 @@
-import { createSession, normalizeFrameForSession } from './sessionApi';
+import { createSession, type NormalizedRuntimeContract } from './runtimeApi';
+import { normalizeFrameForSession } from './frameNormalize';
 import {
   frameBlurb,
   frameEmoji,
@@ -19,7 +20,12 @@ export async function openBridgeSession(params: {
   task: string;
   frame: string | null;
   supports?: string[];
-}): Promise<{ workspaceId: string; ribbon: EntryRibbonState; resolvedFrame: string }> {
+}): Promise<{
+  workspaceId: string;
+  ribbon: EntryRibbonState;
+  resolvedFrame: string;
+  initialContract: NormalizedRuntimeContract;
+}> {
   const trimmed = params.task.trim();
   if (trimmed.length < 3) {
     throw new Error('Task is too short');
@@ -28,13 +34,14 @@ export async function openBridgeSession(params: {
     !params.frame || params.frame === SURPRISE_FRAME_ID ? pickSurpriseFrame() : params.frame;
   const resolvedFrame = normalizeFrameForSession(picked);
   const supports = params.supports?.length ? params.supports : ['step_by_step'];
-  const envelope = await createSession({
+  const contract = await createSession({
     task: trimmed,
     frame: resolvedFrame,
+    interests: [resolvedFrame],
     supports,
     user_words: trimmed,
   });
-  const workspaceId = envelope?.workspace?.id;
+  const workspaceId = contract.workspace?.id;
   if (!workspaceId) {
     logSessionIssue('missing_session_payload', { phase: 'create', task: trimmed });
     throw new Error('Session could not be created. Try again.');
@@ -45,5 +52,5 @@ export async function openBridgeSession(params: {
     frameEmoji: frameEmoji(resolvedFrame),
     frameBlurb: frameBlurb(resolvedFrame),
   };
-  return { workspaceId, ribbon, resolvedFrame };
+  return { workspaceId, ribbon, resolvedFrame, initialContract: contract };
 }

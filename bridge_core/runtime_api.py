@@ -5,6 +5,7 @@ from flask import Blueprint, jsonify, request
 
 from bridge_core.completion_engine import BridgeCompletionEngine
 from bridge_core.export_compiler import ExportCompiler
+from bridge_core.adaptive_cognition_runtime import apply_adaptive_cognition
 from bridge_core.master_runtime_orchestrator import MasterRuntimeOrchestrator
 from bridge_core.rewrite_engine import RewriteEngine
 from bridge_core.runtime_schema import ensure_workspace
@@ -67,24 +68,48 @@ def _context_from_payload(data: dict) -> dict:
     return context
 
 
-def _frontend_runtime(contract: dict) -> dict:
+def _event_from_request(data: dict, latest_output: str = '') -> dict:
+    event_type = data.get('event_type') or ('continue' if latest_output else 'refresh')
+    if data.get('mode') and event_type == 'refresh':
+        event_type = 'rewrite'
+    return {
+        'type': event_type,
+        'user_output': latest_output or data.get('user_output') or '',
+        'mode': data.get('mode'),
+        'successful': True,
+    }
+
+
+def _frontend_runtime(contract: dict, cognition: dict | None = None) -> dict:
+    cognition = cognition or contract.get('adaptive_cognition') or {}
+    pacing = {**contract.get('pacing', {}), **cognition.get('adaptive_pacing', {})}
+    rewards = contract.get('rewards', {})
+    reward_state = cognition.get('reward_state', {})
     return {
         'ui_mode': contract.get('contextual_runtime', {}).get('environment_feel', 'adaptive_environment'),
         'interaction_modes': contract.get('interaction_runtime', {}).get('interaction_modes', []),
         'selected_modes': contract.get('interaction_selection', {}).get('selected_modes', []),
         'challenge': contract.get('minigame', {}),
         'simulation': contract.get('simulation', {}),
-        'reward': contract.get('rewards', {}),
+        'reward': {**rewards, **reward_state},
         'voice': contract.get('voice_runtime', {}),
-        'pacing': contract.get('pacing', {}),
+        'pacing': pacing,
         'verification': contract.get('verification', {}),
         'gate': contract.get('gate', {}),
         'engagement': contract.get('engagement', {}),
         'pathways': contract.get('pathways', {}),
+        'immersion_state': cognition.get('immersion_state', {}),
+        'friction_state': cognition.get('friction_state', {}),
+        'adaptive_pacing': cognition.get('adaptive_pacing', {}),
+        'interaction_rotation': cognition.get('interaction_rotation', {}),
+        'momentum_state': cognition.get('momentum_state', {}),
+        'reward_state': reward_state,
+        'identity_state': cognition.get('identity_state', {}),
         'calm_contract': {
-            'primary_action_only': contract.get('pacing', {}).get('step_size') == 'tiny',
+            'primary_action_only': pacing.get('step_size') == 'tiny',
             'hide_backend_complexity': True,
             'show_next_step_first': True,
+            'focus_mode': cognition.get('momentum_state', {}).get('mode') == 'deep_engagement',
         },
     }
 
@@ -106,7 +131,16 @@ def enrich_session(session: dict, *, data: dict | None = None, latest_output: st
         latest_output=latest_output,
         persist=persist,
     )
-    contract['frontend_runtime'] = _frontend_runtime(contract)
+    cognition = apply_adaptive_cognition(
+        workspace,
+        event=_event_from_request(data, latest_output),
+        user_output=latest_output,
+    )
+    contract['workspace'] = workspace
+    contract['session'] = workspace
+    contract['adaptive_cognition'] = cognition
+    contract['memory_summary'] = cognition.get('runtime_profile', {})
+    contract['frontend_runtime'] = _frontend_runtime(contract, cognition)
     contract['rewrite_options'] = REWRITE_OPTIONS
     return contract
 
@@ -170,8 +204,14 @@ def api_session_continue():
     coordinator = RuntimeV2Coordinator(workspace)
     envelope = coordinator.continue_session(output)
     updated_workspace = ensure_workspace(envelope['workspace'])
-    store.save_workspace(updated_workspace)
-    return ok(enrich_session(updated_workspace, data=data, latest_output=output, persist=True))
+    enriched = enrich_session(
+        updated_workspace,
+        data={**data, 'event_type': 'continue'},
+        latest_output=output,
+        persist=True,
+    )
+    store.save_workspace(ensure_workspace(enriched['workspace']))
+    return ok(enriched)
 
 
 @runtime_api.post('/session/rewrite')
@@ -215,10 +255,10 @@ def api_session_rewrite():
         },
     )
     session = ensure_workspace(session)
-    store.save_workspace(session)
-    contract = enrich_session(session, data=data, persist=True)
-    contract['rewrite_score'] = score
-    return ok(contract)
+    enriched = enrich_session(session, data={**data, 'event_type': 'rewrite', 'mode': mode}, persist=True)
+    enriched['rewrite_score'] = score
+    store.save_workspace(ensure_workspace(enriched['workspace']))
+    return ok(enriched)
 
 
 @runtime_api.post('/session/export')

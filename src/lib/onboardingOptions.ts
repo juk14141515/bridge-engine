@@ -3,7 +3,7 @@
 // Support IDs map 1:1 to `bridge_core.completion_engine.SUPPORT_MODIFIERS`
 // so the backend can honor each modifier directly.
 
-import { normalizeFrameForSession } from './sessionApi';
+import { normalizeFrameForSession } from './frameNormalize';
 import { logSessionIssue } from './sessionDiagnostics';
 
 export interface FrameChip {
