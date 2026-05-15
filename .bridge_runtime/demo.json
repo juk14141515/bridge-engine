@@ -1,0 +1,65 @@
+{
+  "id": "demo",
+  "task": "Learn Spanish through music",
+  "category": "language_learning",
+  "frame": "music",
+  "steps": [
+    {
+      "id": "s1",
+      "title": "First phrase",
+      "prompt": "Write one phrase",
+      "status": "done",
+      "why": "This keeps the Bridge moving.",
+      "action": "Write one phrase",
+      "output_slot": "step_1",
+      "user_output": "Hola amigo",
+      "help_variants": {},
+      "completed_at": "2026-05-15T08:30:32.961878"
+    }
+  ],
+  "artifact": {
+    "sections": {
+      "step_1": "Hola amigo"
+    },
+    "task": "Learn Spanish through music",
+    "frame": "music",
+    "category": "language_learning",
+    "type": "language_practice_set",
+    "supports": [
+      "step_by_step"
+    ],
+    "final_output": "# Practice Sheet: Learn Spanish through music\n\nFrame: music\n\n## 1. Useful Phrase / Concept\nStart with one phrase you can actually use.\n\n## 2. Quick Recall Prompt\nCover the phrase and say it without looking.\n\n## 3. Practice Attempt\nWrite or speak one tiny attempt. Mistakes are useful.\n\n## 4. Tomorrow's Restart Point\nSave the phrases you would reuse tomorrow.",
+    "export_formats": [
+      "markdown",
+      "plain_text"
+    ],
+    "updated_at": "2026-05-15T08:30:32.961887+00:00",
+    "created_at": "2026-05-15T08:30:32.961783"
+  },
+  "title": "Learn Spanish through music",
+  "category_info": {
+    "label": "Language learning",
+    "artifact_type": "language_practice_set",
+    "final_output": "practice sheet",
+    "intent": "Build usable practice through phrases, memory hooks, and mini-output."
+  },
+  "interest_frame": "music",
+  "supports": [
+    "step_by_step"
+  ],
+  "status": "complete",
+  "current_step_index": 1,
+  "events": [],
+  "created_at": "2026-05-15T08:30:32.961790",
+  "updated_at": "2026-05-15T08:30:32.961903",
+  "runtime_state": {
+    "mode": "guided_completion",
+    "status": "active",
+    "current_step_index": 0,
+    "completion_rate": 0,
+    "rewrite_count": 0,
+    "category": "language_learning",
+    "frame": "music",
+    "updated_at": "2026-05-15T08:30:32.961794"
+  }
+}

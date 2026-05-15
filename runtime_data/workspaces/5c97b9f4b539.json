@@ -1,0 +1,153 @@
+{
+  "id": "5c97b9f4b539",
+  "task": "I want to learn Spanish but I never start",
+  "frame": "music",
+  "supports": [
+    "step_by_step"
+  ],
+  "user_words": "I want to learn Spanish but I never start",
+  "category": "language_learning",
+  "status": "active",
+  "current_step_index": 0,
+  "steps": [
+    {
+      "id": "s1",
+      "title": "Measure 1: Spawn point",
+      "prompt": "Write the one thing you need to know first for I want to learn Spanish but I never start.\n\nSupport style: Number actions and keep the sequence linear.",
+      "why": "A small start creates layers without overload.",
+      "action": "Pick the smallest concept that unlocks the rest.",
+      "output_slot": "first_concept",
+      "status": "active",
+      "user_output": "",
+      "help_variants": {
+        "make_easier": "Do only the first 60 seconds: Pick the smallest concept that unlocks the rest.. Stop after the smallest visible mark.",
+        "example": "Use a rough placeholder. Perfect comes later.",
+        "explain_differently": "Think of it as one measure, not the whole project. Your only job is: Pick the smallest concept that unlocks the rest.",
+        "break_smaller": "1) Open the place this belongs. 2) Type one ugly line. 3) Save it. That counts toward: Pick the smallest concept that unlocks the rest."
+      },
+      "created_at": "2026-05-15T08:30:45.290771",
+      "completed_at": null
+    },
+    {
+      "id": "s2",
+      "title": "Measure 2: Practice round",
+      "prompt": "Make one tiny example or flashcard for that concept.\n\nSupport style: Number actions and keep the sequence linear.",
+      "why": "Recall beats rereading for learning.",
+      "action": "Create one recall prompt for I want to learn Spanish but I never start.",
+      "output_slot": "recall_prompt",
+      "status": "pending",
+      "user_output": "",
+      "help_variants": {
+        "make_easier": "Do only the first 60 seconds: Create one recall prompt for I want to learn Spanish but I never start.. Stop after the smallest visible mark.",
+        "example": "Use a rough placeholder. Perfect comes later.",
+        "explain_differently": "Think of it as one measure, not the whole project. Your only job is: Create one recall prompt for I want to learn Spanish but I never start.",
+        "break_smaller": "1) Open the place this belongs. 2) Type one ugly line. 3) Save it. That counts toward: Create one recall prompt for I want to learn Spanish but I never start."
+      },
+      "created_at": "2026-05-15T08:30:45.290782",
+      "completed_at": null
+    },
+    {
+      "id": "s3",
+      "title": "Measure 3: Challenge round",
+      "prompt": "Answer your prompt without looking, then fix it.\n\nSupport style: Number actions and keep the sequence linear.",
+      "why": "Mistakes show exactly where to focus next.",
+      "action": "Run one active recall rep.",
+      "output_slot": "recall_attempt",
+      "status": "pending",
+      "user_output": "",
+      "help_variants": {
+        "make_easier": "Do only the first 60 seconds: Run one active recall rep.. Stop after the smallest visible mark.",
+        "example": "Use a rough placeholder. Perfect comes later.",
+        "explain_differently": "Think of it as one measure, not the whole project. Your only job is: Run one active recall rep.",
+        "break_smaller": "1) Open the place this belongs. 2) Type one ugly line. 3) Save it. That counts toward: Run one active recall rep."
+      },
+      "created_at": "2026-05-15T08:30:45.290788",
+      "completed_at": null
+    },
+    {
+      "id": "s4",
+      "title": "Measure 4: Level summary",
+      "prompt": "Write a 3-bullet summary in your own words.\n\nSupport style: Number actions and keep the sequence linear.",
+      "why": "A short summary makes tomorrow easier.",
+      "action": "Create a restartable summary for the performance pass.",
+      "output_slot": "summary",
+      "status": "pending",
+      "user_output": "",
+      "help_variants": {
+        "make_easier": "Do only the first 60 seconds: Create a restartable summary for the performance pass.. Stop after the smallest visible mark.",
+        "example": "Use a rough placeholder. Perfect comes later.",
+        "explain_differently": "Think of it as one measure, not the whole project. Your only job is: Create a restartable summary for the performance pass.",
+        "break_smaller": "1) Open the place this belongs. 2) Type one ugly line. 3) Save it. That counts toward: Create a restartable summary for the performance pass."
+      },
+      "created_at": "2026-05-15T08:30:45.290793",
+      "completed_at": null
+    }
+  ],
+  "artifact": {
+    "task": "I want to learn Spanish but I never start",
+    "frame": "music",
+    "supports": [
+      "step_by_step"
+    ],
+    "sections": {},
+    "export_formats": [
+      "markdown",
+      "plain_text",
+      "checklist"
+    ],
+    "created_at": "2026-05-15T08:30:45.290797",
+    "category": "language_learning",
+    "type": "language_practice_set",
+    "final_output": "",
+    "updated_at": "2026-05-15T08:30:45.290925"
+  },
+  "events": [
+    {
+      "id": "99221aab77d1",
+      "kind": "session_created",
+      "payload": {
+        "frame": "music",
+        "supports": [
+          "step_by_step"
+        ]
+      },
+      "created_at": "2026-05-15T08:30:45.290811"
+    },
+    {
+      "id": "62de10d10364",
+      "kind": "session_created_v2",
+      "payload": {
+        "category": "language_learning",
+        "frame": "music"
+      },
+      "created_at": "2026-05-15T08:30:45.290943"
+    }
+  ],
+  "created_at": "2026-05-15T08:30:45.290721",
+  "updated_at": "2026-05-15T08:30:45.290733",
+  "title": "I want to learn Spanish but I never start",
+  "category_info": {
+    "label": "Language learning",
+    "artifact_type": "language_practice_set",
+    "final_output": "practice sheet",
+    "intent": "Build usable practice through phrases, memory hooks, and mini-output."
+  },
+  "interest_frame": "music",
+  "runtime_state": {
+    "mode": "guided_completion",
+    "status": "active",
+    "current_step_index": 0,
+    "completion_rate": 0,
+    "rewrite_count": 0,
+    "category": "language_learning",
+    "frame": "music",
+    "updated_at": "2026-05-15T08:30:45.290733",
+    "engagement_state": "engaged",
+    "high_friction": false,
+    "high_momentum": false
+  },
+  "interests": [
+    "music",
+    "gaming"
+  ]
+}
