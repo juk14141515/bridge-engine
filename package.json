@@ -8,6 +8,7 @@
     "dev:api": "node server/index.mjs",
     "build": "tsc -b && vite build",
     "test:api": "node server/smoke-test.mjs",
+    "acceptance:runtime": "node scripts/acceptance-flow.mjs",
     "preview": "vite preview",
     "lint": "eslint ."
   },

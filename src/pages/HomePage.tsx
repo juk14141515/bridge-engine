@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ApiError } from '../lib/runtimeApi';
+import { QuickStartBar } from '../components/QuickStartBar';
+import { formatUserApiError, sessionTaskLabel } from '../lib/displayLabels';
 import { fetchRecentWorkspaces, type RecentWorkspaceSummary } from '../lib/sessionApi';
 import {
   FRAME_CHIPS,
@@ -8,6 +9,14 @@ import {
   frameTitle,
   frameEmoji,
 } from '../lib/onboardingOptions';
+import {
+  PRODUCT_EYEBROW,
+  PRODUCT_EXAMPLE_CALLOUT_BODY,
+  PRODUCT_EXAMPLE_CALLOUT_TITLE,
+  PRODUCT_CHIP_SECTION_LABEL,
+  PRODUCT_HERO_LEDE,
+  PRODUCT_HERO_TITLE,
+} from '../lib/productPitch';
 
 function formatUpdated(iso?: string): string {
   if (!iso) return '';
@@ -40,13 +49,7 @@ export default function HomePage() {
       const data = await fetchRecentWorkspaces();
       setWorkspaces(data.workspaces ?? []);
     } catch (e) {
-      const msg =
-        e instanceof ApiError
-          ? e.status === 0
-            ? 'Backend not reachable. Start it on port 6060.'
-            : e.message
-          : 'Could not load sessions.';
-      setError(msg);
+      setError(formatUserApiError(e, 'Could not load sessions.'));
     } finally {
       setLoading(false);
     }
@@ -67,20 +70,29 @@ export default function HomePage() {
 
   return (
     <div className="home-page">
-      <h1 className="home-title">Turn hard things into something your brain can enter.</h1>
-      <p className="home-lede">
-        One input, one frame, one session. Bridge translates the hard thing through something you
-        already enjoy and walks you through it.
-      </p>
+      <p className="pitch-eyebrow">{PRODUCT_EYEBROW}</p>
+      <h1 className="home-title">{PRODUCT_HERO_TITLE}</h1>
+      <p className="home-lede">{PRODUCT_HERO_LEDE}</p>
+
+      <aside className="pitch-callout" aria-label="Example">
+        <p className="pitch-callout__title">{PRODUCT_EXAMPLE_CALLOUT_TITLE}</p>
+        <p className="pitch-callout__body">{PRODUCT_EXAMPLE_CALLOUT_BODY}</p>
+      </aside>
+
+      <QuickStartBar onError={setError} />
+
+      <p className="home-or">Or write your own</p>
 
       <textarea
         className="home-input"
         rows={2}
-        placeholder="What do you want to learn, finish, or get through?"
+        placeholder="Something you need to finish or get through"
         value={task}
         onChange={(e) => setTask(e.target.value)}
-        aria-label="What do you want to learn, finish, or get through?"
+        aria-label="Something you need to finish or get through"
       />
+
+      <p className="chip-section-label">{PRODUCT_CHIP_SECTION_LABEL}</p>
 
       <div className="frame-chip-row">
         {FRAME_CHIPS.map((f) => (
@@ -118,7 +130,7 @@ export default function HomePage() {
           className="btn btn-primary btn-lg btn-block home-cta-primary"
           onClick={start}
         >
-          Start Bridge
+          Start now
         </button>
         <Link className="btn btn-quiet home-cta-customize" to="/start">
           Customize more
@@ -148,7 +160,8 @@ export default function HomePage() {
 
         {!loading && !workspaces.length && !error ? (
           <p className="muted small recent-empty">
-            No sessions yet. Type something above and start one.
+            No sessions yet. Try a quick-start button above, or type one short line and tap Start. You can
+            open this app as often as you need; nothing is timed.
           </p>
         ) : null}
 
@@ -158,7 +171,7 @@ export default function HomePage() {
             const total = w.progress_total ?? 0;
             const pct = total ? Math.round((done / total) * 100) : 0;
             const updated = formatUpdated(w.updated_at);
-            const taskLabel = (w.task && w.task.trim()) || (w.title && w.title.trim()) || 'Untitled';
+            const taskLabel = sessionTaskLabel(w.task, w.title);
             const fEmoji = frameEmoji(w.frame);
             const fTitle = frameTitle(w.frame);
             const isComplete = (w.status ?? '').toLowerCase() === 'complete';

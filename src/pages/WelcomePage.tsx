@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { PRODUCT_HERO_TITLE, PRODUCT_WELCOME_TAGLINE } from '../lib/productPitch';
 
 export default function WelcomePage() {
   return (
@@ -11,42 +12,38 @@ export default function WelcomePage() {
       </header>
 
       <section className="welcome-hero welcome-hero--tight">
-        <h1 className="h1 welcome-title">Finish difficult things through what you already enjoy.</h1>
-        <p className="welcome-tagline muted">
-          Bridge is adaptive: a live workspace that senses momentum, rewrites steps when you need a
-          gentler angle, grows a visible artifact, and saves every continuation—not generic productivity
-          software.
-        </p>
+        <h1 className="h1 welcome-title">{PRODUCT_HERO_TITLE}</h1>
+        <p className="welcome-tagline muted">{PRODUCT_WELCOME_TAGLINE}</p>
       </section>
 
       <div className="instant-demo-grid">
         <div className="instant-demo-card card--warm">
-          <div className="instant-demo-before">Essay</div>
+          <div className="instant-demo-before">Paper</div>
           <div className="instant-demo-arrow" aria-hidden>
             →
           </div>
           <ul className="instant-demo-list">
-            <li>Open doc</li>
-            <li>Messy paragraph</li>
-            <li>One citation</li>
+            <li>Open a doc</li>
+            <li>Write one rough part</li>
+            <li>Add one source</li>
           </ul>
         </div>
         <div className="instant-demo-card card--warm">
-          <div className="instant-demo-before">Gym</div>
+          <div className="instant-demo-before">Coding style</div>
           <div className="instant-demo-arrow" aria-hidden>
             →
           </div>
           <ul className="instant-demo-list">
-            <li>Shoes on</li>
-            <li>One minute move</li>
-            <li>Optional extra rep</li>
+            <li>Name the &ldquo;spec&rdquo;</li>
+            <li>Build one section</li>
+            <li>Clean one draft pass</li>
           </ul>
         </div>
       </div>
 
       <div className="welcome-cta">
         <Link className="btn btn-primary btn-primary--welcome" to="/home">
-          Enter Bridge
+          Continue
         </Link>
       </div>
     </>

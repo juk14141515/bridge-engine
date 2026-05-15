@@ -1,0 +1,148 @@
+{
+  "artifact": {
+    "category": "language_learning",
+    "created_at": "2026-05-15T07:43:23.254331",
+    "export_formats": [
+      "markdown",
+      "plain_text",
+      "checklist"
+    ],
+    "final_output": "## First Concept\nI learned basic greetings like hola and gracias.",
+    "frame": "music",
+    "sections": {
+      "first_concept": "I learned basic greetings like hola and gracias."
+    },
+    "supports": [
+      "step_by_step"
+    ],
+    "task": "I want to learn Spanish but I never start",
+    "type": "language_practice_set",
+    "updated_at": "2026-05-15T07:43:23.264078"
+  },
+  "category": "language_learning",
+  "category_info": {
+    "label": "Language learning",
+    "artifact_type": "language_practice_set",
+    "final_output": "practice sheet",
+    "intent": "Build usable practice through phrases, memory hooks, and mini-output."
+  },
+  "created_at": "2026-05-15T07:43:23.254245",
+  "current_step_index": 1,
+  "events": [
+    {
+      "created_at": "2026-05-15T07:43:23.254342",
+      "id": "298bd5c36950",
+      "kind": "session_created",
+      "payload": {
+        "frame": "music",
+        "supports": [
+          "step_by_step"
+        ]
+      }
+    },
+    {
+      "created_at": "2026-05-15T07:43:23.254498",
+      "id": "be6820d9ca9f",
+      "kind": "session_created_v2",
+      "payload": {
+        "category": "language_learning",
+        "frame": "music"
+      }
+    }
+  ],
+  "frame": "music",
+  "id": "9f8b87bcc048",
+  "interest_frame": "music",
+  "runtime_state": {
+    "category": "language_learning",
+    "completion_rate": 0,
+    "current_step_index": 0,
+    "frame": "music",
+    "mode": "guided_completion",
+    "rewrite_count": 0,
+    "status": "active",
+    "updated_at": "2026-05-15T07:43:23.254258"
+  },
+  "status": "active",
+  "steps": [
+    {
+      "action": "Pick the smallest concept that unlocks the rest.",
+      "completed_at": "2026-05-15T07:43:23.264053",
+      "created_at": "2026-05-15T07:43:23.254297",
+      "help_variants": {
+        "break_smaller": "1) Open the place this belongs. 2) Type one ugly line. 3) Save it. That counts toward: Pick the smallest concept that unlocks the rest.",
+        "example": "Use a rough placeholder. Perfect comes later.",
+        "explain_differently": "Think of it as one measure, not the whole project. Your only job is: Pick the smallest concept that unlocks the rest.",
+        "make_easier": "Do only the first 60 seconds: Pick the smallest concept that unlocks the rest.. Stop after the smallest visible mark."
+      },
+      "id": "s1",
+      "output_slot": "first_concept",
+      "prompt": "Write the one thing you need to know first for I want to learn Spanish but I never start.\n\nSupport style: Number actions and keep the sequence linear.",
+      "status": "done",
+      "title": "Measure 1: Spawn point",
+      "user_output": "I learned basic greetings like hola and gracias.",
+      "why": "A small start creates layers without overload."
+    },
+    {
+      "action": "Create one recall prompt for I want to learn Spanish but I never start.",
+      "completed_at": null,
+      "created_at": "2026-05-15T07:43:23.254312",
+      "help_variants": {
+        "break_smaller": "1) Open the place this belongs. 2) Type one ugly line. 3) Save it. That counts toward: Create one recall prompt for I want to learn Spanish but I never start.",
+        "example": "Use a rough placeholder. Perfect comes later.",
+        "explain_differently": "Think of it as one measure, not the whole project. Your only job is: Create one recall prompt for I want to learn Spanish but I never start.",
+        "make_easier": "Do only the first 60 seconds: Create one recall prompt for I want to learn Spanish but I never start.. Stop after the smallest visible mark."
+      },
+      "id": "s2",
+      "output_slot": "recall_prompt",
+      "prompt": "Make one tiny example or flashcard for that concept.\n\nSupport style: Number actions and keep the sequence linear.",
+      "status": "active",
+      "title": "Measure 2: Practice round",
+      "user_output": "",
+      "why": "Recall beats rereading for learning."
+    },
+    {
+      "action": "Run one active recall rep.",
+      "completed_at": null,
+      "created_at": "2026-05-15T07:43:23.254320",
+      "help_variants": {
+        "break_smaller": "1) Open the place this belongs. 2) Type one ugly line. 3) Save it. That counts toward: Run one active recall rep.",
+        "example": "Use a rough placeholder. Perfect comes later.",
+        "explain_differently": "Think of it as one measure, not the whole project. Your only job is: Run one active recall rep.",
+        "make_easier": "Do only the first 60 seconds: Run one active recall rep.. Stop after the smallest visible mark."
+      },
+      "id": "s3",
+      "output_slot": "recall_attempt",
+      "prompt": "Answer your prompt without looking, then fix it.\n\nSupport style: Number actions and keep the sequence linear.",
+      "status": "pending",
+      "title": "Measure 3: Challenge round",
+      "user_output": "",
+      "why": "Mistakes show exactly where to focus next."
+    },
+    {
+      "action": "Create a restartable summary for the performance pass.",
+      "completed_at": null,
+      "created_at": "2026-05-15T07:43:23.254326",
+      "help_variants": {
+        "break_smaller": "1) Open the place this belongs. 2) Type one ugly line. 3) Save it. That counts toward: Create a restartable summary for the performance pass.",
+        "example": "Use a rough placeholder. Perfect comes later.",
+        "explain_differently": "Think of it as one measure, not the whole project. Your only job is: Create a restartable summary for the performance pass.",
+        "make_easier": "Do only the first 60 seconds: Create a restartable summary for the performance pass.. Stop after the smallest visible mark."
+      },
+      "id": "s4",
+      "output_slot": "summary",
+      "prompt": "Write a 3-bullet summary in your own words.\n\nSupport style: Number actions and keep the sequence linear.",
+      "status": "pending",
+      "title": "Measure 4: Level summary",
+      "user_output": "",
+      "why": "A short summary makes tomorrow easier."
+    }
+  ],
+  "supports": [
+    "step_by_step"
+  ],
+  "task": "I want to learn Spanish but I never start",
+  "title": "I want to learn Spanish but I never start",
+  "updated_at": "2026-05-15T07:43:23.264097",
+  "user_words": "I want to learn Spanish but I never start"
+}

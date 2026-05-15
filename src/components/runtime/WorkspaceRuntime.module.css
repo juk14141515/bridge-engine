@@ -1,0 +1,231 @@
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.primaryStep {
+  order: 1;
+}
+
+.workPanel {
+  order: 2;
+}
+
+.optionalRow {
+  order: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.artifactBlock {
+  order: 4;
+}
+
+.pathwayRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.pathwayChip {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.pathwayChip:hover {
+  border-color: rgba(125, 215, 178, 0.35);
+  color: var(--text);
+}
+
+.interactionCard {
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(125, 215, 178, 0.2);
+  background: rgba(125, 215, 178, 0.05);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.interactionCard__title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.interactionCard__sub {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.interactionCard__cta {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
+.checkpoint {
+  margin: 0 0 8px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(251, 191, 36, 0.25);
+  background: rgba(251, 191, 36, 0.06);
+  font-size: 13px;
+  line-height: 1.45;
+  color: rgba(253, 230, 138, 0.95);
+}
+
+.progressPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.2);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.progressPill__meter {
+  width: 48px;
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.progressPill__meter > span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: 999px;
+}
+
+.rewriteFold {
+  margin-top: 4px;
+}
+
+.rewriteFold summary {
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--muted);
+  list-style: none;
+}
+
+.rewriteFold summary::-webkit-details-marker {
+  display: none;
+}
+
+.rewriteGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.sessionLayout {
+  display: grid;
+  gap: 16px;
+}
+
+.sessionLayoutFocus .optionalRow,
+.sessionLayoutFocus .rewriteFold {
+  display: none;
+}
+
+.sessionLayoutFocus .sessionLayout__aside {
+  opacity: 0.92;
+}
+
+@media (min-width: 900px) {
+  .sessionLayout {
+    grid-template-columns: minmax(0, 1fr) minmax(200px, 240px);
+    align-items: start;
+  }
+
+  .sessionLayout__main {
+    min-width: 0;
+  }
+
+  .sessionLayout__aside {
+    position: sticky;
+    top: 12px;
+  }
+}
+
+.stepTrail {
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.stepTrail__label {
+  margin: 0 0 10px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.stepTrail__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stepTrail__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.stepTrail__item--active {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.stepTrail__item--done {
+  color: rgba(125, 215, 178, 0.85);
+}
+
+.stepTrail__marker {
+  width: 8px;
+  height: 8px;
+  margin-top: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: rgba(148, 163, 184, 0.35);
+}
+
+.stepTrail__item--active .stepTrail__marker {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgba(125, 215, 178, 0.2);
+}
+
+.stepTrail__item--done .stepTrail__marker {
+  background: rgba(125, 215, 178, 0.7);
+}
+
+.stepTrail__title {
+  flex: 1;
+}
