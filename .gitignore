@@ -6,6 +6,7 @@ __pycache__/
 *.log
 .cursor/
 .vite/
+.log
 
 # Local runtime state
 data/*.db

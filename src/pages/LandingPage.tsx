@@ -1,20 +1,22 @@
-import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { QuickStartBar } from '../components/QuickStartBar';
 import { FRAME_CHIPS, SURPRISE_FRAME_ID } from '../lib/onboardingOptions';
+import {
+  PRODUCT_EYEBROW,
+  PRODUCT_EXAMPLE_CALLOUT_BODY,
+  PRODUCT_EXAMPLE_CALLOUT_TITLE,
+  PRODUCT_CHIP_SECTION_LABEL,
+  PRODUCT_HERO_LEDE,
+  PRODUCT_HERO_TITLE,
+} from '../lib/productPitch';
 import styles from './LandingPage.module.css';
-
-const examples = [
-  { hard: 'English essay', through: 'Gaming', emoji: '🎮' },
-  { hard: 'Learn Spanish', through: 'Music', emoji: '🎧' },
-  { hard: 'Finish my project', through: 'Systems', emoji: '🧠' },
-  { hard: 'Strategy memo', through: 'Investing', emoji: '📈' },
-  { hard: 'Hard conversation', through: 'Care', emoji: '🤝' },
-];
 
 export function LandingPage() {
   const navigate = useNavigate();
   const [task, setTask] = useState('');
   const [frame, setFrame] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   function startNow() {
     const t = task.trim();
@@ -28,20 +30,35 @@ export function LandingPage() {
   return (
     <div className={styles.wrap}>
       <div className={styles.inner}>
-        <h1 className={styles.h1}>Turn hard things into something your brain can enter.</h1>
-        <p className={styles.p}>
-          Drop in something you want to learn, finish, or get through. Bridge translates it
-          through something you already enjoy — and walks you through it.
-        </p>
+        <p className="pitch-eyebrow">{PRODUCT_EYEBROW}</p>
+        <h1 className={styles.h1}>{PRODUCT_HERO_TITLE}</h1>
+        <p className={styles.p}>{PRODUCT_HERO_LEDE}</p>
+
+        <aside className="pitch-callout" aria-label="Example">
+          <p className="pitch-callout__title">{PRODUCT_EXAMPLE_CALLOUT_TITLE}</p>
+          <p className="pitch-callout__body">{PRODUCT_EXAMPLE_CALLOUT_BODY}</p>
+        </aside>
+
+        <QuickStartBar onError={setError} />
+
+        {error ? (
+          <div className="banner-gentle" role="status">
+            {error}
+          </div>
+        ) : null}
+
+        <p className={styles.or}>Or write your own</p>
 
         <textarea
           className={styles.textarea}
           rows={3}
-          placeholder="What do you want to learn, finish, or get through?"
+          placeholder="Something you need to finish or get through"
           value={task}
           onChange={(e) => setTask(e.target.value)}
-          aria-label="What do you want to learn, finish, or get through?"
+          aria-label="Something you need to finish or get through"
         />
+
+        <p className="chip-section-label">{PRODUCT_CHIP_SECTION_LABEL}</p>
 
         <div className={styles.chipRow}>
           {FRAME_CHIPS.map((f) => (
@@ -75,24 +92,12 @@ export function LandingPage() {
 
         <div className={styles.ctaRow}>
           <button type="button" className="btn btn-primary btn-lg" onClick={startNow}>
-            Start Bridge
+            Start now
           </button>
           <button type="button" className="btn btn-quiet" onClick={() => navigate('/home')}>
             Continue a session
           </button>
         </div>
-
-        <ul className={styles.exampleStrip}>
-          {examples.map((ex) => (
-            <li key={ex.hard} className={styles.exampleItem}>
-              <span className={styles.exampleHard}>{ex.hard}</span>
-              <span className={styles.exampleArrow}>→</span>
-              <span className={styles.exampleThrough}>
-                <span aria-hidden>{ex.emoji}</span> {ex.through}
-              </span>
-            </li>
-          ))}
-        </ul>
       </div>
     </div>
   );

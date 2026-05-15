@@ -3,6 +3,9 @@
 // Support IDs map 1:1 to `bridge_core.completion_engine.SUPPORT_MODIFIERS`
 // so the backend can honor each modifier directly.
 
+import { normalizeFrameForSession } from './sessionApi';
+import { logSessionIssue } from './sessionDiagnostics';
+
 export interface FrameChip {
   id: string;
   title: string;
@@ -142,23 +145,35 @@ export const SUPPORT_CHIPS: ReadonlyArray<SupportChip> = [
 ];
 
 export function frameTitle(id: string | undefined | null): string {
-  if (!id) return '';
-  return ALL_FRAMES.find((f) => f.id === id)?.title ?? id;
+  if (!id?.trim()) return '';
+  const resolved = normalizeFrameForSession(id);
+  const chip = ALL_FRAMES.find((f) => f.id === resolved);
+  if (!chip && id.trim()) {
+    logSessionIssue('invalid_frame', { frame: id, resolved });
+  }
+  return chip?.title ?? 'Your style';
 }
 
 export function frameBlurb(id: string | undefined | null): string {
-  if (!id) return '';
-  return ALL_FRAMES.find((f) => f.id === id)?.blurb ?? '';
+  if (!id?.trim()) return '';
+  const resolved = normalizeFrameForSession(id);
+  return ALL_FRAMES.find((f) => f.id === resolved)?.blurb ?? '';
 }
 
 export function frameEmoji(id: string | undefined | null): string {
-  if (!id) return '';
-  return ALL_FRAMES.find((f) => f.id === id)?.emoji ?? '';
+  if (!id?.trim()) return '';
+  const resolved = normalizeFrameForSession(id);
+  return ALL_FRAMES.find((f) => f.id === resolved)?.emoji ?? '✨';
 }
 
 export function supportTitle(id: string | undefined | null): string {
-  if (!id) return '';
-  return SUPPORT_CHIPS.find((s) => s.id === id)?.title ?? id;
+  if (!id?.trim()) return '';
+  const chip = SUPPORT_CHIPS.find((s) => s.id === id);
+  if (!chip) {
+    logSessionIssue('unknown_support', { support: id });
+    return '';
+  }
+  return chip.title;
 }
 
 export function isProfessionalMode(supports: ReadonlyArray<string> | undefined | null): boolean {
@@ -170,3 +185,38 @@ export function pickSurpriseFrame(): string {
   const idx = Math.floor(Math.random() * FRAME_CHIPS.length);
   return FRAME_CHIPS[idx]?.id ?? 'gaming';
 }
+
+/** One line shown under the input as “how it will feel” in that frame. */
+export function frameTranslationPreview(frameId: string | undefined | null): string {
+  if (!frameId || frameId === SURPRISE_FRAME_ID) return '';
+  const map: Record<string, string> = {
+    gaming: 'Boss-battle pacing, XP checkpoints, one obvious next move.',
+    music: 'Measures and layers—repeatable practice, then a performance pass.',
+    fitness: 'Warmup, working sets, cooldown—progress without burning out.',
+    investing: 'Thesis, evidence, risk, decision—turn fog into a memo you can ship.',
+    systems: 'Inputs, outputs, bottlenecks—turn chaos into a loop you can run.',
+    creative: 'Rough cut, shape, polish—permission to be messy first.',
+    relationship: 'Signal, safe line, boundary—care without spiraling.',
+    coding: 'Small slices, tight loops—ship something useful early.',
+  };
+  return map[frameId] ?? ALL_FRAMES.find((f) => f.id === frameId)?.example ?? '';
+}
+
+export interface QuickStartPreset {
+  id: string;
+  /** Short label on the tile */
+  label: string;
+  /** Full task sent to the runtime */
+  task: string;
+  frame: string;
+}
+
+/** One tap = start a real session (no typing). */
+export const QUICK_START_PRESETS: ReadonlyArray<QuickStartPreset> = [
+  { id: 'essay', label: 'Essay / paper', task: 'Finish the English essay I keep avoiding', frame: 'gaming' },
+  { id: 'spanish', label: 'Learn Spanish', task: 'Learn Spanish in a way I can stick with', frame: 'music' },
+  { id: 'project', label: 'Finish a project', task: 'Finish the project I started and stalled on', frame: 'systems' },
+  { id: 'memo', label: 'Strategy memo', task: 'Draft a clear product strategy memo', frame: 'investing' },
+  { id: 'talk', label: 'Hard conversation', task: 'Prepare for the hard conversation I keep avoiding', frame: 'relationship' },
+  { id: 'reset', label: 'Reset my space', task: 'Get my room back to baseline without spiraling', frame: 'fitness' },
+];

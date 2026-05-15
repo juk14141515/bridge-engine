@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { ApiError } from '../lib/runtimeApi';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   continueSession,
   exportSession,
@@ -9,13 +8,20 @@ import {
   type RuntimeStepPayload,
   type WorkspaceEnvelope,
 } from '../lib/sessionApi';
+import { isProfessionalMode } from '../lib/onboardingOptions';
+import type { EntryRibbonState } from '../lib/startBridgeSession';
+import { PRODUCT_WORKSPACE_LOOP } from '../lib/productPitch';
 import {
-  frameTitle,
-  frameEmoji,
-  frameBlurb,
-  isProfessionalMode,
-  supportTitle,
-} from '../lib/onboardingOptions';
+  artifactSectionLabel,
+  formatUserApiError,
+  frameBlurbSafe,
+  frameEmojiSafe,
+  frameTitleSafe,
+  sessionTaskLabel,
+  supportTitleSafe,
+} from '../lib/displayLabels';
+import { logSessionIssue } from '../lib/sessionDiagnostics';
+import { normalizeFrameForSession } from '../lib/sessionApi';
 
 type RewriteMode = 'make_easier' | 'break_smaller' | 'explain_differently' | 'give_example';
 
@@ -33,6 +39,10 @@ const REWRITE_BUTTONS: ReadonlyArray<RewriteButton> = [
   { mode: 'explain_differently', label: 'Explain differently', proLabel: 'Reframe', hint: 'Reframe through the interest.' },
 ];
 
+interface BridgeLocationState {
+  entryRibbon?: EntryRibbonState;
+}
+
 type ArtifactPreview = WorkspaceEnvelope['artifact_preview'] & {
   type?: string;
   outline?: { introduction?: string; body_points?: string; draft_seed?: string; conclusion?: string };
@@ -46,6 +56,8 @@ type ArtifactPreview = WorkspaceEnvelope['artifact_preview'] & {
 export default function WorkspacePage() {
   const { workflowId } = useParams<{ workflowId: string }>();
   const workspaceId = workflowId ?? '';
+  const location = useLocation();
+  const navigate = useNavigate();
 
   const [envelope, setEnvelope] = useState<WorkspaceEnvelope | null>(null);
   const [draft, setDraft] = useState('');
@@ -57,10 +69,22 @@ export default function WorkspacePage() {
   const [exportCopied, setExportCopied] = useState(false);
   const [artifactOpen, setArtifactOpen] = useState(true);
   const [planOpen, setPlanOpen] = useState(false);
+  const [entryRibbon, setEntryRibbon] = useState<EntryRibbonState | null>(
+    () => (location.state as BridgeLocationState | null)?.entryRibbon ?? null,
+  );
+
+  useEffect(() => {
+    if (!entryRibbon) return;
+    const id = window.setTimeout(() => {
+      navigate(location.pathname, { replace: true, state: {} });
+      setEntryRibbon(null);
+    }, 5600);
+    return () => window.clearTimeout(id);
+  }, [entryRibbon, navigate, location.pathname]);
 
   const load = useCallback(async () => {
     if (!workspaceId) {
-      setError('Missing session id.');
+      setError("Couldn't load this session.");
       setLoading(false);
       return;
     }
@@ -68,14 +92,35 @@ export default function WorkspacePage() {
     setError(null);
     try {
       const data = await fetchWorkspace(workspaceId);
+      const ws = data?.workspace ?? data?.session;
+      if (!ws?.id) {
+        logSessionIssue('missing_session_payload', { workspaceId, phase: 'fetch' });
+        setEnvelope(null);
+        setError("Couldn't load this session.");
+        return;
+      }
+      const rawFrame = String(ws.frame ?? '');
+      const normalizedFrame = normalizeFrameForSession(rawFrame);
+      if (rawFrame && normalizedFrame !== rawFrame.trim().toLowerCase()) {
+        logSessionIssue('invalid_frame', { workspaceId, frame: rawFrame, resolved: normalizedFrame });
+      }
+      const ribbonState = (location.state as BridgeLocationState | null)?.entryRibbon;
+      if (ribbonState && frameTitleSafe(normalizedFrame) !== ribbonState.frameTitle) {
+        logSessionIssue('hydration_mismatch', {
+          workspaceId,
+          ribbonFrame: ribbonState.frameTitle,
+          sessionFrame: normalizedFrame,
+        });
+      }
       setEnvelope(data);
       setDraft('');
     } catch (e) {
-      setError(formatApiError(e, 'Could not load this session.'));
+      setEnvelope(null);
+      setError(formatUserApiError(e, "Couldn't load this session."));
     } finally {
       setLoading(false);
     }
-  }, [workspaceId]);
+  }, [workspaceId, location.state]);
 
   useEffect(() => {
     void load();
@@ -92,8 +137,13 @@ export default function WorkspacePage() {
   const runtimeState = envelope?.runtime_state ?? null;
   const artifactPreview = (envelope?.artifact_preview ?? {}) as ArtifactPreview;
   const progress = envelope?.progress ?? { done: 0, total: steps.length, percent: 0 };
-  const task = String(session?.task ?? session?.title ?? '').trim();
-  const frame = (session?.frame ?? 'gaming') as string;
+  const task = sessionTaskLabel(
+    typeof session?.task === 'string' ? session.task : undefined,
+    typeof session?.title === 'string' ? session.title : undefined,
+  );
+  const frame = normalizeFrameForSession(
+    typeof session?.frame === 'string' ? session.frame : undefined,
+  );
   const supports = (session?.supports as string[] | undefined) ?? [];
   const professional = isProfessionalMode(supports);
 
@@ -116,7 +166,7 @@ export default function WorkspacePage() {
       setExportText(null);
       setExportCopied(false);
     } catch (e) {
-      setError(formatApiError(e, 'Could not save and continue.'));
+      setError(formatUserApiError(e, "Couldn't save this step. Try again."));
     } finally {
       setBusy(false);
     }
@@ -134,7 +184,7 @@ export default function WorkspacePage() {
       const label = professional ? btn?.proLabel : btn?.label;
       setHelpNotice(`Rewrote with: ${label ?? mode}`);
     } catch (e) {
-      setError(formatApiError(e, 'Adaptive help is not reachable right now.'));
+      setError(formatUserApiError(e, "Couldn't adjust this step. Try again."));
     } finally {
       setBusy(false);
     }
@@ -149,7 +199,7 @@ export default function WorkspacePage() {
       setExportText(data.markdown || data.plain_text || '');
       setExportCopied(false);
     } catch (e) {
-      setError(formatApiError(e, 'Could not generate export.'));
+      setError(formatUserApiError(e, "Couldn't export this session. Try again."));
     } finally {
       setBusy(false);
     }
@@ -167,9 +217,9 @@ export default function WorkspacePage() {
   }
 
   const tone = useTone(professional);
-  const fEmoji = frameEmoji(frame);
-  const fTitle = frameTitle(frame);
-  const fBlurb = frameBlurb(frame);
+  const fEmoji = frameEmojiSafe(frame);
+  const fTitle = frameTitleSafe(frame);
+  const fBlurb = frameBlurbSafe(frame);
 
   return (
     <div className="session">
@@ -195,17 +245,19 @@ export default function WorkspacePage() {
 
       {!envelope && !loading ? (
         <div className="session__missing">
-          <h2 className="session-step__title">This session isn't available.</h2>
+          <h2 className="session-step__title">Couldn&apos;t load this session.</h2>
           <p className="muted small">
-            The runtime couldn't find <code>{workspaceId}</code>. It may have been deleted, or the
-            backend isn't running.
+            It may have been removed, or the server may be offline. You can try again or start fresh.
           </p>
           <div className="row session__missing-actions">
+            <button type="button" className="btn" onClick={() => void load()}>
+              Retry
+            </button>
             <Link className="btn btn-primary" to="/start">
               Start a new Bridge
             </Link>
-            <Link className="btn" to="/home">
-              See recent sessions
+            <Link className="btn btn-quiet" to="/home">
+              Back to sessions
             </Link>
           </div>
         </div>
@@ -213,17 +265,36 @@ export default function WorkspacePage() {
 
       {envelope ? (
         <>
-          <section className="session-identity" aria-label="Session identity">
+          {entryRibbon ? (
+            <div className="bridge-entry-ribbon" role="status" aria-live="polite">
+              <div className="bridge-entry-ribbon__row">
+                <span className="bridge-entry-ribbon__task">{entryRibbon.task}</span>
+                <span className="bridge-entry-ribbon__arrow" aria-hidden>
+                  →
+                </span>
+                <span className="bridge-entry-ribbon__frame">
+                  <span aria-hidden>{entryRibbon.frameEmoji}</span> {entryRibbon.frameTitle}
+                </span>
+              </div>
+              <p className="bridge-entry-ribbon__sub">{entryRibbon.frameBlurb}</p>
+              <p className="bridge-entry-ribbon__foot">
+                You are in your session. Work one step at a time. Save when you are ready. The next step
+                will use the {entryRibbon.frameTitle} style you picked, until this task is done.
+              </p>
+            </div>
+          ) : null}
+
+          <section className="session-identity" aria-label="Your session">
             <div className="session-identity__frame">
               <span className="session-identity__frame-emoji" aria-hidden>
                 {fEmoji || '✨'}
               </span>
               <span className="session-identity__frame-text">
-                <span className="session-identity__frame-label">Through</span>
+                <span className="session-identity__frame-label">Using</span>
                 <span className="session-identity__frame-name">{fTitle}</span>
               </span>
             </div>
-            <h1 className="session-identity__task">{task || 'Untitled session'}</h1>
+            <h1 className="session-identity__task">{task}</h1>
             {fBlurb ? <p className="session-identity__sub">{fBlurb}</p> : null}
             {progress.total > 0 ? (
               <div className="session-identity__progress">
@@ -237,7 +308,10 @@ export default function WorkspacePage() {
             ) : null}
             {supports.length ? (
               <p className="session-identity__supports muted small">
-                {supports.map((s) => supportTitle(s) ?? s).join(' · ')}
+                {supports
+                  .map((s) => supportTitleSafe(s))
+                  .filter(Boolean)
+                  .join(' · ')}
               </p>
             ) : null}
           </section>
@@ -254,13 +328,16 @@ export default function WorkspacePage() {
             />
           ) : (
             <>
+              <p className="bridge-session-loop" role="note">
+                {tone.loopBanner}
+              </p>
               <section className="session-step">
                 <span className="session-step__eyebrow">{tone.rightNow}</span>
                 <h2 className="session-step__title">
                   {currentStep?.title || nextPrompt?.title || tone.fallbackTitle}
                 </h2>
                 {currentStep?.why ? <p className="session-step__why">{currentStep.why}</p> : null}
-                <p className="session-step__prompt">
+                <p className="session-step__prompt session-step__prompt--live">
                   {currentStep?.prompt || nextPrompt?.prompt || tone.fallbackPrompt}
                 </p>
                 {currentStep?.action ? (
@@ -392,6 +469,8 @@ interface Tone {
   buildingLabel: string;
   planLabel: string;
   artifactEmpty: string;
+  loopBanner: string;
+  completeLede: string;
 }
 
 function useTone(professional: boolean): Tone {
@@ -411,10 +490,14 @@ function useTone(professional: boolean): Tone {
       buildingLabel: 'Deliverable so far',
       planLabel: 'Session plan',
       artifactEmpty: 'Deliverable populates as you save each step.',
+      loopBanner:
+        'Process: address the current step, record your output, save to advance. Repeat until the deliverable is complete, using the framing you selected.',
+      completeLede:
+        'This workstream is complete. Export or copy your materials below, or begin a new session when ready.',
     };
   }
   return {
-    rightNow: 'Right now',
+    rightNow: 'This step',
     yourMove: 'Your move',
     doneLabel: 'Done = ',
     fallbackTitle: 'Next move',
@@ -424,10 +507,13 @@ function useTone(professional: boolean): Tone {
     markContinue: 'Mark done & continue',
     saving: 'Saving…',
     emptyHint: 'Empty is fine — momentum still counts.',
-    stuckLabel: 'Stuck? Adapt this step',
+    stuckLabel: 'Adjust this step',
     buildingLabel: 'What you\u2019re building',
     planLabel: 'Path',
     artifactEmpty: 'Your artifact builds as you save each step.',
+    loopBanner: PRODUCT_WORKSPACE_LOOP,
+    completeLede:
+      'You reached the end of this task. Save a copy below, or start something new whenever you want.',
   };
 }
 
@@ -501,7 +587,10 @@ function EssayOutline({
 }
 
 function Flashcards({ preview, emptyHint }: { preview: ArtifactPreview; emptyHint: string }) {
-  const cards = preview.cards ?? [];
+  const cards = (preview.cards ?? []).filter((card) => {
+    const front = (card.front ?? '').trim().toLowerCase();
+    return front && !['not found', 'not_found', 'undefined', 'null', 'error'].includes(front);
+  });
   if (!cards.length) {
     return <p className="muted small session-artifact__empty">{emptyHint}</p>;
   }
@@ -509,8 +598,8 @@ function Flashcards({ preview, emptyHint }: { preview: ArtifactPreview; emptyHin
     <ul className="artifact-list">
       {cards.map((card, idx) => (
         <li key={idx}>
-          <strong>{card.front || `Card ${idx + 1}`}</strong>
-          <span>{card.back || '—'}</span>
+          <strong>{card.front?.trim() || `Prompt ${idx + 1}`}</strong>
+          <span>{card.back?.trim() || '—'}</span>
         </li>
       ))}
     </ul>
@@ -534,13 +623,24 @@ function CodeScaffold({ preview, emptyHint }: { preview: ArtifactPreview; emptyH
 }
 
 function LiveSections({ sections }: { sections: Record<string, string | undefined | null> }) {
-  const entries = Object.entries(sections).filter(([, v]) => v && String(v).trim());
+  const entries = Object.entries(sections)
+    .filter(([, v]) => v && String(v).trim())
+    .map(([name, value]) => {
+      const label = artifactSectionLabel(name);
+      return label ? { name, label, value: String(value) } : null;
+    })
+    .filter((e): e is { name: string; label: string; value: string } => e !== null);
+
+  if (!entries.length) {
+    return null;
+  }
+
   return (
     <ul className="artifact-list">
-      {entries.map(([name, value]) => (
+      {entries.map(({ name, label, value }) => (
         <li key={name}>
-          <strong>{prettyKey(name)}</strong>
-          <span>{value as string}</span>
+          <strong>{label}</strong>
+          <span>{value}</span>
         </li>
       ))}
     </ul>
@@ -568,7 +668,7 @@ function CompletionPanel({
     <section className="session-complete">
       <span className="session-step__eyebrow">{tone.rightNow}</span>
       <h2 className="session-step__title">You finished &ldquo;{task}&rdquo;.</h2>
-      <p className="muted">Save what you made. Copy it. Use it. Start the next one when you&rsquo;re ready.</p>
+      <p className="muted">{tone.completeLede}</p>
       <div className="session-complete__actions">
         <button type="button" className="btn btn-primary btn-lg" onClick={onExport} disabled={busy}>
           {exportText ? 'Refresh export' : 'Generate export'}
@@ -587,15 +687,3 @@ function CompletionPanel({
   );
 }
 
-function prettyKey(key: string): string {
-  return key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
-function formatApiError(e: unknown, fallback: string): string {
-  if (e instanceof ApiError) {
-    if (e.status === 0) return 'Backend not reachable on port 6060. Start `python app_runtime.py`.';
-    return e.message || fallback;
-  }
-  if (e instanceof Error) return e.message;
-  return fallback;
-}
