@@ -5,8 +5,9 @@ from flask import Blueprint, jsonify, request
 
 from bridge_core.completion_engine import BridgeCompletionEngine
 from bridge_core.export_compiler import ExportCompiler
+from bridge_core.master_runtime_orchestrator import MasterRuntimeOrchestrator
 from bridge_core.rewrite_engine import RewriteEngine
-from bridge_core.runtime_schema import build_envelope, ensure_workspace
+from bridge_core.runtime_schema import ensure_workspace
 from bridge_core.runtime_v2_coordinator import RuntimeV2Coordinator
 from bridge_core.sql_store import BridgeSqlStore
 from bridge_core.task_registry import detect_task_type
@@ -43,6 +44,51 @@ def _normalize_support(value: str) -> str:
     return SUPPORT_ALIASES.get(key, key)
 
 
+def _profile_from_payload(data: dict, session: dict | None = None) -> dict:
+    session = session or {}
+    profile = data.get('profile') if isinstance(data.get('profile'), dict) else {}
+    interests = data.get('interests') or session.get('interests') or profile.get('interests') or []
+    if isinstance(interests, str):
+        interests = [interests]
+    profile.setdefault('interests', interests)
+    profile.setdefault('learning_preferences', data.get('learning_preferences') or profile.get('learning_preferences') or [])
+    if data.get('interaction_style'):
+        profile['interaction_style'] = data.get('interaction_style')
+    if data.get('cognitive_profile'):
+        profile['cognitive_profile'] = data.get('cognitive_profile')
+    return profile
+
+
+def _context_from_payload(data: dict) -> dict:
+    context = data.get('context') if isinstance(data.get('context'), dict) else {}
+    for key in ['environment', 'energy', 'available_minutes']:
+        if key in data:
+            context[key] = data[key]
+    return context
+
+
+def _frontend_runtime(contract: dict) -> dict:
+    return {
+        'ui_mode': contract.get('contextual_runtime', {}).get('environment_feel', 'adaptive_environment'),
+        'interaction_modes': contract.get('interaction_runtime', {}).get('interaction_modes', []),
+        'selected_modes': contract.get('interaction_selection', {}).get('selected_modes', []),
+        'challenge': contract.get('minigame', {}),
+        'simulation': contract.get('simulation', {}),
+        'reward': contract.get('rewards', {}),
+        'voice': contract.get('voice_runtime', {}),
+        'pacing': contract.get('pacing', {}),
+        'verification': contract.get('verification', {}),
+        'gate': contract.get('gate', {}),
+        'engagement': contract.get('engagement', {}),
+        'pathways': contract.get('pathways', {}),
+        'calm_contract': {
+            'primary_action_only': contract.get('pacing', {}).get('step_size') == 'tiny',
+            'hide_backend_complexity': True,
+            'show_next_step_first': True,
+        },
+    }
+
+
 def normalize_session(payload):
     session = payload.get('session') or payload.get('workspace')
     if isinstance(session, dict):
@@ -50,20 +96,19 @@ def normalize_session(payload):
     return {}
 
 
-def enrich_session(session: dict) -> dict:
-    """Runtime-v2 frontend envelope.
-
-    Every API route returns this shape so the React app never has to guess
-    whether the canonical object is called a session, workspace, workflow, or
-    lane. Older sessions are normalized through runtime_schema first.
-    """
+def enrich_session(session: dict, *, data: dict | None = None, latest_output: str = '', persist: bool = False) -> dict:
+    data = data or {}
     workspace = ensure_workspace(session)
-    envelope = RuntimeV2Coordinator(workspace).continue_session('') if False else build_envelope(
+    profile = _profile_from_payload(data, workspace)
+    context = _context_from_payload(data)
+    contract = MasterRuntimeOrchestrator(profile=profile, context=context).build_contract(
         workspace,
-        artifact_preview=workspace.get('artifact', {}),
-        rewrite_options=REWRITE_OPTIONS,
+        latest_output=latest_output,
+        persist=persist,
     )
-    return envelope
+    contract['frontend_runtime'] = _frontend_runtime(contract)
+    contract['rewrite_options'] = REWRITE_OPTIONS
+    return contract
 
 
 def _load_workspace_from_request(data):
@@ -99,6 +144,7 @@ def api_session_create():
     )
     payload = ensure_workspace(session.to_dict())
     payload['title'] = payload.get('task', 'Bridge workspace')
+    payload['interests'] = data.get('interests') or []
     payload.setdefault('runtime_state', {})
     payload['runtime_state'].setdefault('rewrite_count', 0)
     payload.setdefault('events', []).append(
@@ -110,7 +156,7 @@ def api_session_create():
         }
     )
     store.save_workspace(payload)
-    return ok(enrich_session(payload))
+    return ok(enrich_session(payload, data=data, persist=True))
 
 
 @runtime_api.post('/session/continue')
@@ -123,8 +169,9 @@ def api_session_continue():
     output = data.get('output') or data.get('user_output') or data.get('text') or ''
     coordinator = RuntimeV2Coordinator(workspace)
     envelope = coordinator.continue_session(output)
-    store.save_workspace(envelope['workspace'])
-    return ok(envelope)
+    updated_workspace = ensure_workspace(envelope['workspace'])
+    store.save_workspace(updated_workspace)
+    return ok(enrich_session(updated_workspace, data=data, latest_output=output, persist=True))
 
 
 @runtime_api.post('/session/rewrite')
@@ -169,9 +216,9 @@ def api_session_rewrite():
     )
     session = ensure_workspace(session)
     store.save_workspace(session)
-    envelope = enrich_session(session)
-    envelope['rewrite_score'] = score
-    return ok(envelope)
+    contract = enrich_session(session, data=data, persist=True)
+    contract['rewrite_score'] = score
+    return ok(contract)
 
 
 @runtime_api.post('/session/export')
@@ -193,6 +240,7 @@ def api_session_export():
         'plain_text': plain_text,
         'filename': compiled['filename'],
         'title': session.get('title') or session.get('task') or 'Bridge Export',
+        'frontend_runtime': _frontend_runtime(enrich_session(session, data=data)),
     })
 
 
@@ -203,7 +251,7 @@ def api_workspace_get(workspace_id):
         return fail('workspace not found', 404, code='workspace_not_found')
     workspace = ensure_workspace(workspace)
     store.save_workspace(workspace)
-    return ok(enrich_session(workspace))
+    return ok(enrich_session(workspace, persist=True))
 
 
 @runtime_api.get('/workspaces/recent')
@@ -238,7 +286,7 @@ def api_workspace_save():
         return fail('workspace with id is required', 400, code='missing_workspace')
     workspace = ensure_workspace(workspace)
     store.save_workspace(workspace)
-    return ok(enrich_session(workspace))
+    return ok(enrich_session(workspace, data=data, persist=True))
 
 
 def register_runtime_api(app):
