@@ -1,7 +1,33 @@
+/* —— Runtime shell: density + focus (no raw data, presentation only) —— */
+
+.runtimeShell {
+  transition: opacity 0.35s ease, filter 0.35s ease;
+}
+
+.runtimeShell--density-low {
+  --runtime-stack-gap: 18px;
+  --runtime-motion-ms: 420ms;
+}
+
+.runtimeShell--density-normal {
+  --runtime-stack-gap: 14px;
+  --runtime-motion-ms: 280ms;
+}
+
+.runtimeShell--density-immersive {
+  --runtime-stack-gap: 16px;
+  --runtime-motion-ms: 220ms;
+}
+
+.runtimeShellFocus {
+  --runtime-stack-gap: 20px;
+}
+
 .stack {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--runtime-stack-gap, 14px);
+  transition: gap var(--runtime-motion-ms, 280ms) ease;
 }
 
 .primaryStep {
@@ -147,6 +173,150 @@
 
 .sessionLayoutFocus .sessionLayout__aside {
   opacity: 0.92;
+}
+
+.sessionLayoutFocus .artifactBlock {
+  opacity: 0.88;
+}
+
+/* Primary step emotional shell */
+.primaryStepShell {
+  transition:
+    box-shadow var(--runtime-motion-ms, 280ms) ease,
+    border-color var(--runtime-motion-ms, 280ms) ease;
+}
+
+.primaryStepShell--density-low .primaryStepPrompt {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.primaryStepShell--density-immersive .primaryStepTitle {
+  letter-spacing: -0.03em;
+}
+
+.primaryStepShell--tone-gentle .primaryStepContinuity {
+  opacity: 0.95;
+}
+
+.primaryStepShell--tone-focused .primaryStepTitle {
+  font-weight: 650;
+}
+
+.primaryStepContinuity {
+  max-width: 52ch;
+}
+
+.primaryStepTitle {
+  transition: letter-spacing var(--runtime-motion-ms, 280ms) ease;
+}
+
+.primaryStepPrompt {
+  transition: opacity var(--runtime-motion-ms, 280ms) ease;
+}
+
+.primaryStepAction {
+  transition: border-color var(--runtime-motion-ms, 280ms) ease;
+}
+
+.primaryStepReward {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+/* Work input density */
+.workInputShell--density-low .session-write__textarea {
+  min-height: 120px;
+}
+
+.workInputShell--density-immersive .session-write__textarea {
+  min-height: 140px;
+}
+
+/* Step trail: focus / calm */
+.stepTrailMinimal {
+  padding: 10px 12px;
+}
+
+.stepTrailMinimal .stepTrail__label {
+  font-size: 10px;
+  margin-bottom: 6px;
+}
+
+.stepTrailMinimal .stepTrail__item {
+  font-size: 12px;
+}
+
+.stepTrailMinimal .stepTrail__marker {
+  width: 6px;
+  height: 6px;
+  margin-top: 4px;
+}
+
+/* Interaction atmospheres — distinct feel, calm premium */
+.interactionCard__ribbon {
+  margin: 0 0 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(148, 163, 184, 0.85);
+}
+
+.interactionCard--simulation {
+  border-color: rgba(96, 165, 250, 0.35);
+  background: linear-gradient(165deg, rgba(30, 58, 138, 0.22), rgba(15, 23, 42, 0.5));
+  padding: 20px 18px;
+  min-height: 120px;
+}
+
+.interactionCard--voice,
+.interactionCard--conversational {
+  border-color: rgba(167, 139, 250, 0.35);
+  background: linear-gradient(180deg, rgba(88, 28, 135, 0.12), rgba(15, 23, 42, 0.35));
+  border-radius: calc(var(--radius-md) + 4px);
+  padding: 18px 18px;
+}
+
+.interactionCard--challenge,
+.interactionCard--quest,
+.interactionCard--boss_battle {
+  border-color: rgba(125, 215, 178, 0.45);
+  background: linear-gradient(180deg, rgba(16, 185, 129, 0.08), rgba(15, 23, 42, 0.45));
+  border-left-width: 3px;
+  border-left-style: solid;
+  border-left-color: rgba(125, 215, 178, 0.55);
+}
+
+.interactionCard--boss_battle {
+  border-left-color: rgba(251, 191, 36, 0.45);
+  background: linear-gradient(180deg, rgba(251, 191, 36, 0.06), rgba(15, 23, 42, 0.55));
+}
+
+.interactionCard--checkpoint {
+  border-style: solid;
+  border-color: rgba(148, 163, 184, 0.35);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.interactionCard--reflection,
+.interactionCard--teach_back {
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.35);
+  padding: 18px 16px;
+}
+
+.interactionCard--reflection .interactionCard__sub,
+.interactionCard--teach_back .interactionCard__sub {
+  line-height: 1.55;
+}
+
+.interactionCard--default {
+  border-color: rgba(125, 215, 178, 0.2);
+  background: rgba(125, 215, 178, 0.05);
 }
 
 @media (min-width: 900px) {

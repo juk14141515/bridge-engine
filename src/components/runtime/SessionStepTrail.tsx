@@ -1,13 +1,22 @@
 import { getStepTrail, type NormalizedRuntimeContract } from '../../lib/runtimeContract';
 import styles from './WorkspaceRuntime.module.css';
 
-export function SessionStepTrail({ contract }: { contract: NormalizedRuntimeContract }) {
+export function SessionStepTrail({
+  contract,
+  variant = 'default',
+}: {
+  contract: NormalizedRuntimeContract;
+  variant?: 'default' | 'minimal';
+}) {
   const trail = getStepTrail(contract);
   if (trail.length < 2) return null;
 
   return (
-    <nav className={styles.stepTrail} aria-label="Session progress">
-      <p className={styles.stepTrail__label}>Your path</p>
+    <nav
+      className={`${styles.stepTrail} ${variant === 'minimal' ? styles.stepTrailMinimal : ''}`}
+      aria-label="Session progress"
+    >
+      <p className={styles.stepTrail__label}>{variant === 'minimal' ? 'Progress' : 'Your path'}</p>
       <ol className={styles.stepTrail__list}>
         {trail.map((item) => (
           <li

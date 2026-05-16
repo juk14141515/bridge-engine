@@ -169,15 +169,12 @@ export async function rewriteSession(
 export async function exportSession(
   workspaceId: string,
   format: ExportFormat = 'markdown',
-  workspace?: RuntimeWorkspace,
 ): Promise<RuntimeExportResult> {
   return fetchJson<RuntimeExportResult>('/api/session/export', {
     method: 'POST',
     body: JSON.stringify({
       workspace_id: workspaceId,
       format,
-      workspace,
-      session: workspace,
     }),
   });
 }

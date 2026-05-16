@@ -23,6 +23,7 @@ import { normalizeFrameForSession } from '../lib/frameNormalize';
 import {
   artifactHasMeaningfulContent,
   getPathwayChips,
+  getRuntimeDensity,
   getVisibleInteractionCards,
   getRewardNotice,
   shouldUseFocusLayout,
@@ -171,6 +172,9 @@ export default function WorkspacePage() {
   const interactionCards = contract ? getVisibleInteractionCards(contract) : [];
   const pathwayChips = contract ? getPathwayChips(contract) : [];
   const stepIndex = Number(workspace?.current_step_index ?? 0);
+  const runtimeDensity = contract ? getRuntimeDensity(contract) : 'normal';
+  const isLowDensity = runtimeDensity === 'low';
+  const hideSecondaryNav = focusLayout || isLowDensity || minimal;
 
   async function handleContinue() {
     if (!contract?.workspace?.id || busy || isComplete) return;
@@ -203,9 +207,7 @@ export default function WorkspacePage() {
     const seq = loadGen.current.next();
 
     try {
-      const next = await rewriteSession(contract.workspace.id, mode, {
-        frame: contract.workspace.frame,
-      });
+      const next = await rewriteSession(contract.workspace.id, mode);
       if (!loadGen.current.isCurrent(seq)) return;
       applyContract(next);
       const label = REWRITE_MODES.find((m) => m.mode === mode);
@@ -222,7 +224,7 @@ export default function WorkspacePage() {
     setBusy(true);
     setError(null);
     try {
-      const data = await exportSession(contract.workspace.id, 'markdown', contract.workspace);
+      const data = await exportSession(contract.workspace.id, 'markdown');
       setExportText(data.markdown || data.content || data.plain_text || '');
       setExportCopied(false);
     } catch (e) {
@@ -244,7 +246,11 @@ export default function WorkspacePage() {
   }
 
   return (
-    <div className="session">
+    <div
+      className={`session ${styles.runtimeShell} ${styles[`runtimeShell--density-${runtimeDensity}`]} ${
+        focusLayout ? styles.runtimeShellFocus : ''
+      }`}
+    >
       <header className="session__top">
         <Link className="btn btn-quiet" to="/home">
           ← Sessions
@@ -370,18 +376,21 @@ export default function WorkspacePage() {
                     />
                   </div>
 
-                  {interactionCards.length || pathwayChips.length ? (
+                  {(interactionCards.length && !minimal && !focusLayout && !isLowDensity) ||
+                  (pathwayChips.length && !minimal && !hideSecondaryNav) ? (
                     <div className={styles.optionalRow}>
-                      {interactionCards.map((card) => (
-                        <RuntimeInteractionCard
-                          key={card.kind}
-                          card={card}
-                          onAction={() =>
-                            setHelpNotice(`${card.title} is optional—keep going in the box above.`)
-                          }
-                        />
-                      ))}
-                      {pathwayChips.length && !minimal ? (
+                      {interactionCards.length && !minimal && !focusLayout && !isLowDensity
+                        ? interactionCards.map((card) => (
+                            <RuntimeInteractionCard
+                              key={card.kind}
+                              card={card}
+                              onAction={() =>
+                                setHelpNotice(`${card.title} is optional—keep going in the box above.`)
+                              }
+                            />
+                          ))
+                        : null}
+                      {pathwayChips.length && !minimal && !hideSecondaryNav ? (
                         <div className={styles.pathwayRow} role="group" aria-label="Other ways to practice">
                           <span className="muted small">Try another way:</span>
                           {pathwayChips.map((p) => (
@@ -435,7 +444,7 @@ export default function WorkspacePage() {
             </div>
 
             <aside className={styles.sessionLayout__aside}>
-              <SessionStepTrail contract={contract} />
+              <SessionStepTrail contract={contract} variant={focusLayout ? 'minimal' : 'default'} />
             </aside>
           </div>
 

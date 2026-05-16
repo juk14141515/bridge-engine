@@ -124,12 +124,31 @@ export interface NormalizedRuntimeContract {
 
 export type InteractionCardKind = 'voice' | 'challenge' | 'simulation';
 
+/** UX atmosphere for optional interaction surfaces — derived from normalized runtime only. */
+export type InteractionAtmosphere =
+  | 'simulation'
+  | 'voice'
+  | 'challenge'
+  | 'checkpoint'
+  | 'reflection'
+  | 'quest'
+  | 'boss_battle'
+  | 'teach_back'
+  | 'conversational'
+  | 'default';
+
 export interface VisibleInteractionCard {
   kind: InteractionCardKind;
   title: string;
   subtitle: string;
   cta: string;
+  /** How this card should feel visually — never raw backend keys. */
+  atmosphere: InteractionAtmosphere;
 }
+
+export type RuntimeDensity = 'low' | 'normal' | 'immersive';
+
+export type InteractionTone = 'professional' | 'gentle' | 'calm' | 'focused';
 
 const REWRITE_DEFAULT = [
   'make_easier',
@@ -435,17 +454,77 @@ export function shouldUseFocusLayout(contract: NormalizedRuntimeContract): boole
   return Boolean(contract.frontendRuntime.calm_contract?.focus_mode);
 }
 
+/** Primary interaction mode from runtime (first selected, else rotation hint). */
+export function getPrimaryMode(contract: NormalizedRuntimeContract): string {
+  const selected = contract.frontendRuntime.selected_modes ?? [];
+  if (selected.length) return String(selected[0]);
+  const rotated = contract.frontendRuntime.interaction_rotation?.current;
+  if (rotated) return rotated;
+  return '';
+}
+
+/** Layout / motion density from engagement, friction, and calm contract. */
+export function getRuntimeDensity(contract: NormalizedRuntimeContract): RuntimeDensity {
+  const eng = contract.frontendRuntime.engagement?.state;
+  const score = Number(contract.frontendRuntime.engagement?.engagement_score ?? 50);
+  const friction = Number(contract.frontendRuntime.friction_state?.friction_level ?? 0);
+  const cc = contract.frontendRuntime.calm_contract;
+  const pacing = contract.frontendRuntime.pacing?.step_size;
+
+  if (cc?.primary_action_only || pacing === 'tiny' || friction >= 0.55 || eng === 'disengaging' || score < 36) {
+    return 'low';
+  }
+  if (eng === 'immersed' || score >= 74 || contract.frontendRuntime.momentum_state?.mode === 'deep_engagement') {
+    return 'immersive';
+  }
+  return 'normal';
+}
+
+/** Copy and framing tone — all user-safe labels. */
+export function getInteractionTone(contract: NormalizedRuntimeContract): InteractionTone {
+  const supports = contract.workspace.supports ?? [];
+  if (supports.includes('professional')) return 'professional';
+  const friction = Number(contract.frontendRuntime.friction_state?.friction_level ?? 0);
+  if (friction >= 0.5) return 'gentle';
+  if (contract.frontendRuntime.identity_state?.tone === 'professional') return 'professional';
+  if (contract.frontendRuntime.momentum_state?.mode === 'deep_engagement') return 'focused';
+  return 'calm';
+}
+
+function resolveAtmosphere(
+  kind: InteractionCardKind,
+  contract: NormalizedRuntimeContract,
+): InteractionAtmosphere {
+  const mode = getPrimaryMode(contract).toLowerCase();
+  const arc = String(contract.frontendRuntime.immersion_state?.challenge_arc ?? '').toLowerCase();
+  const ver = contract.frontendRuntime.verification;
+
+  if (kind === 'simulation' || mode.includes('simulation') || mode.includes('scenario')) return 'simulation';
+  if (kind === 'voice' || mode.includes('voice') || mode.includes('conversation')) {
+    return mode.includes('conversation') ? 'conversational' : 'voice';
+  }
+  if (mode.includes('reflection')) return 'reflection';
+  if (mode.includes('teach')) return 'teach_back';
+  if (mode.includes('quest') || mode.includes('quests')) return 'quest';
+  if (mode.includes('boss') || arc.includes('final') || arc.includes('boss')) return 'boss_battle';
+  if (ver?.next_action === 'request_checkpoint') return 'checkpoint';
+  if (kind === 'challenge' || mode.includes('challenge')) return 'challenge';
+  return 'default';
+}
+
 export function getVoiceOption(contract: NormalizedRuntimeContract): VisibleInteractionCard | null {
   const voice = contract.frontendRuntime.voice ?? {};
   const mode = voice.voice_mode as string | undefined;
   if (!mode) return null;
   const reflection = (voice.reflection_prompts as string) || 'Practice out loud for a minute.';
-  return {
+  const card: VisibleInteractionCard = {
     kind: 'voice',
     title: 'Voice practice',
     subtitle: reflection,
     cta: 'Try speaking',
+    atmosphere: resolveAtmosphere('voice', contract),
   };
+  return card;
 }
 
 export function getChallengeOption(contract: NormalizedRuntimeContract): VisibleInteractionCard | null {
@@ -454,12 +533,14 @@ export function getChallengeOption(contract: NormalizedRuntimeContract): Visible
   const objective = ch.objective as string | undefined;
   if (!gameType && !objective) return null;
   const title = GAME_LABELS[gameType ?? ''] || 'Optional challenge';
-  return {
+  const card: VisibleInteractionCard = {
     kind: 'challenge',
     title,
     subtitle: objective || 'A short interactive round tied to your goal.',
     cta: 'Try it',
+    atmosphere: resolveAtmosphere('challenge', contract),
   };
+  return card;
 }
 
 export function getSimulationOption(contract: NormalizedRuntimeContract): VisibleInteractionCard | null {
@@ -468,12 +549,14 @@ export function getSimulationOption(contract: NormalizedRuntimeContract): Visibl
   const scenario = sim.scenario as string | undefined;
   if (!key && !scenario) return null;
   const title = SIM_LABELS[key ?? ''] || 'Practice mode';
-  return {
+  const card: VisibleInteractionCard = {
     kind: 'simulation',
     title,
     subtitle: scenario || 'Walk through a scenario version of your task.',
     cta: 'Try scenario',
+    atmosphere: resolveAtmosphere('simulation', contract),
   };
+  return card;
 }
 
 /** At most one optional interaction surface, unless pacing allows more. */
@@ -500,6 +583,18 @@ export function getVisibleInteractionCards(
   const simulation = getSimulationOption(contract);
   if (simulation && (selected.has('simulation') || !selected.size)) {
     candidates.push(simulation);
+  }
+
+  if (candidates.length > 1) {
+    const p = getPrimaryMode(contract).toLowerCase();
+    const rank = (c: VisibleInteractionCard) => {
+      if (p.includes('sim') && c.kind === 'simulation') return 3;
+      if ((p.includes('voice') || p.includes('conversation')) && c.kind === 'voice') return 3;
+      if ((p.includes('challenge') || p.includes('quest')) && c.kind === 'challenge') return 3;
+      if (p.includes('writing') && c.kind === 'challenge') return 1;
+      return 0;
+    };
+    candidates.sort((a, b) => rank(b) - rank(a));
   }
 
   const unique: VisibleInteractionCard[] = [];
