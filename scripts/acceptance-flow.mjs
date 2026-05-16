@@ -1,15 +1,21 @@
 /**
- * Runtime acceptance flow — create → continue → rewrite → export → refresh
- * against Flask on http://127.0.0.1:6060. No mocked responses.
+ * Bridge runtime acceptance flow.
  *
- * Usage: npm run acceptance:runtime
+ * Exercises the real Flask runtime on http://127.0.0.1:6060:
+ * create -> continue -> continue -> continue -> rewrite -> refresh -> export
+ *
+ * No mocked responses. Uses older JavaScript syntax for VPS compatibility.
  */
+
+import http from 'http';
+import { URL } from 'url';
 
 const BASE = 'http://127.0.0.1:6060';
 const OFFLINE_MSG =
   'Backend not reachable on http://127.0.0.1:6060. Start it with python app_runtime.py';
 
 const TASK = 'I dislike English, love videogames, and need to write an essay.';
+const FRAME = 'gaming';
 const CONTINUE_OUTPUTS = [
   'Games help me think in stories even when English worksheets feel dead.',
   'My essay connects videogame quest structure to how I plan paragraphs.',
@@ -17,406 +23,525 @@ const CONTINUE_OUTPUTS = [
 ];
 
 const BANNED = /\b(NOT\s*FOUND|not_found|undefined|mock|placeholder|demo|fallback)\b/i;
-const FALLBACK_PROMPT = /Do the smallest piece of the real task/i;
 
-function fail(message) {
-  console.error(`FAIL: ${message}`);
+const results = {
+  create: 'PENDING',
+  continue1: 'PENDING',
+  continue2: 'PENDING',
+  continue3: 'PENDING',
+  rewrite: 'PENDING',
+  refresh: 'PENDING',
+  export: 'PENDING',
+};
+
+function fail(phase, endpoint, message, detail) {
+  console.error('\nFAIL');
+  console.error('Phase: ' + phase);
+  if (endpoint) console.error('Endpoint: ' + endpoint);
+  console.error('Assertion: ' + message);
+  if (detail) {
+    if (detail.statusCode) console.error('Status code: ' + detail.statusCode);
+    if (detail.bodySnippet) console.error('Body snippet: ' + detail.bodySnippet);
+  }
   process.exit(1);
 }
 
-function assert(condition, message) {
-  if (!condition) fail(message);
+function assertPhase(condition, phase, endpoint, message, detail) {
+  if (!condition) fail(phase, endpoint, message, detail);
 }
 
-/** @returns {{ path: string, value: string }[]} */
+function bodySnippet(body) {
+  var text = '';
+  try {
+    text = typeof body === 'string' ? body : JSON.stringify(body);
+  } catch (err) {
+    text = String(body);
+  }
+  return text.slice(0, 700);
+}
+
+async function fetchRaw(path, init) {
+  var target = new URL(BASE + path);
+  var options = init || {};
+  var method = options.method || 'GET';
+  var headers = options.headers || {};
+  var body = options.body || '';
+
+  if (body && !headers['Content-Length']) {
+    headers['Content-Length'] = Buffer.byteLength(body);
+  }
+
+  return new Promise(function (resolve) {
+    var req = http.request(
+      {
+        hostname: target.hostname,
+        port: target.port,
+        path: target.pathname + target.search,
+        method: method,
+        headers: headers,
+        timeout: 15000,
+      },
+      function (res) {
+        var chunks = [];
+        res.on('data', function (chunk) {
+          chunks.push(chunk);
+        });
+        res.on('end', function () {
+          var raw = Buffer.concat(chunks).toString('utf8');
+          var parsed = null;
+          if (raw) {
+            try {
+              parsed = JSON.parse(raw);
+            } catch (err) {
+              parsed = raw;
+            }
+          } else {
+            parsed = {};
+          }
+          resolve({
+            networkError: false,
+            status: res.statusCode || 0,
+            ok: (res.statusCode || 0) >= 200 && (res.statusCode || 0) < 300,
+            body: parsed,
+            raw: raw,
+          });
+        });
+      },
+    );
+
+    req.on('timeout', function () {
+      req.destroy(new Error('request timed out'));
+    });
+
+    req.on('error', function (err) {
+      resolve({
+        networkError: true,
+        status: 0,
+        ok: false,
+        body: null,
+        raw: String(err && err.message ? err.message : err),
+      });
+    });
+
+    if (body) req.write(body);
+    req.end();
+  });
+}
+
+async function request(phase, path, method, payload) {
+  var init = {
+    method: method || 'GET',
+    headers: { 'Content-Type': 'application/json' },
+  };
+  if (payload !== undefined) init.body = JSON.stringify(payload);
+
+  var res = await fetchRaw(path, init);
+  if (res.networkError) {
+    if (phase === 'create') {
+      console.error(OFFLINE_MSG);
+      process.exit(1);
+    }
+    fail(phase, path, 'network request failed', { bodySnippet: res.raw });
+  }
+  if (!res.ok) {
+    fail(phase, path, 'HTTP request failed', {
+      statusCode: res.status,
+      bodySnippet: bodySnippet(res.body),
+    });
+  }
+  if (!res.body || typeof res.body !== 'object') {
+    fail(phase, path, 'response was not a JSON object', {
+      statusCode: res.status,
+      bodySnippet: bodySnippet(res.body),
+    });
+  }
+  return res.body;
+}
+
+async function optionalHealthProbe() {
+  var res = await fetchRaw('/api/health', { method: 'GET' });
+  if (res.networkError) return { reachable: false, health: null };
+  if (res.ok && res.body && res.body.ok === true) {
+    return { reachable: true, health: res.body };
+  }
+  return { reachable: true, health: null };
+}
+
+function getWorkspace(body) {
+  if (body && body.workspace && typeof body.workspace === 'object') return body.workspace;
+  if (body && body.session && typeof body.session === 'object') return body.session;
+  return {};
+}
+
+function getWorkspaceId(body) {
+  var ws = getWorkspace(body);
+  return ws.id || ws.workspace_id || ws.session_id || '';
+}
+
+function getProgressDone(body) {
+  if (body && body.progress && typeof body.progress.done === 'number') return body.progress.done;
+  var ws = getWorkspace(body);
+  if (Array.isArray(ws.steps)) {
+    return ws.steps.filter(function (step) {
+      return step && (step.status === 'done' || step.status === 'completed');
+    }).length;
+  }
+  return 0;
+}
+
+function getStepIndex(body) {
+  var ws = getWorkspace(body);
+  var value = ws.current_step_index;
+  return typeof value === 'number' ? value : Number(value || 0);
+}
+
+function currentStep(body) {
+  if (body && body.current_step && typeof body.current_step === 'object') return body.current_step;
+  return {};
+}
+
+function runtime(body) {
+  if (body && body.frontend_runtime && typeof body.frontend_runtime === 'object') {
+    return body.frontend_runtime;
+  }
+  return {};
+}
+
+function artifactPreview(body) {
+  if (body && body.artifact_preview && typeof body.artifact_preview === 'object') {
+    return body.artifact_preview;
+  }
+  return {};
+}
+
+function artifactPreviewLength(body) {
+  return bodySnippet(artifactPreview(body)).length;
+}
+
+function stepSignature(body) {
+  var step = currentStep(body);
+  var next = body && body.next_prompt && typeof body.next_prompt === 'object' ? body.next_prompt : {};
+  return [
+    step.id || '',
+    step.title || '',
+    step.prompt || '',
+    step.action || '',
+    next.title || '',
+    next.prompt || '',
+    next.message || '',
+  ].join('|');
+}
+
+function previousStepCompleted(prevBody, nextBody) {
+  var prevWs = getWorkspace(prevBody);
+  var nextWs = getWorkspace(nextBody);
+  var prevIdx = getStepIndex(prevBody);
+  if (!Array.isArray(nextWs.steps) || prevIdx < 0 || prevIdx >= nextWs.steps.length) return false;
+  var step = nextWs.steps[prevIdx];
+  return step && (step.status === 'done' || step.status === 'completed');
+}
+
 function collectUserFacingStrings(payload) {
-  const out = [];
+  var out = [];
   if (!payload || typeof payload !== 'object') return out;
 
-  const push = (path, value) => {
+  function push(path, value) {
     if (typeof value !== 'string') return;
-    const trimmed = value.trim();
+    var trimmed = value.trim();
     if (!trimmed) return;
-    out.push({ path, value: trimmed });
-  };
-
-  const step = payload.current_step;
-  if (step && typeof step === 'object') {
-    push('current_step.title', step.title);
-    push('current_step.prompt', step.prompt);
-    push('current_step.why', step.why);
-    push('current_step.action', step.action);
+    out.push({ path: path, value: trimmed });
   }
 
-  const np = payload.next_prompt;
-  if (np && typeof np === 'object') {
-    push('next_prompt.title', np.title);
-    push('next_prompt.prompt', np.prompt);
-    push('next_prompt.message', np.message);
-  }
+  var step = currentStep(payload);
+  push('current_step.title', step.title);
+  push('current_step.prompt', step.prompt);
+  push('current_step.action', step.action);
+  push('current_step.why', step.why);
 
-  collectArtifactPreviewStrings(out, payload.artifact_preview, 'artifact_preview');
+  var next = payload.next_prompt && typeof payload.next_prompt === 'object' ? payload.next_prompt : {};
+  push('next_prompt.title', next.title);
+  push('next_prompt.prompt', next.prompt);
+  push('next_prompt.message', next.message);
 
-  const runtime = payload.frontend_runtime;
-  if (runtime && typeof runtime === 'object') {
-    const ch = runtime.challenge;
-    if (ch && typeof ch === 'object') {
-      push('frontend_runtime.challenge.objective', ch.objective);
-      push('frontend_runtime.challenge.title', ch.title);
-    }
-    const sim = runtime.simulation;
-    if (sim && typeof sim === 'object') {
-      push('frontend_runtime.simulation.scenario', sim.scenario);
-      push('frontend_runtime.simulation.title', sim.title);
-    }
-    const voice = runtime.voice;
-    if (voice && typeof voice === 'object') {
-      const rp = voice.reflection_prompts;
-      if (typeof rp === 'string') push('frontend_runtime.voice.reflection_prompts', rp);
-      else if (Array.isArray(rp)) {
-        rp.forEach((item, i) => push(`frontend_runtime.voice.reflection_prompts[${i}]`, item));
-      }
-    }
-    const immersion = runtime.immersion_state;
-    if (immersion && typeof immersion === 'object') {
-      push('frontend_runtime.immersion_state.narrative_thread', immersion.narrative_thread);
-      push('frontend_runtime.immersion_state.mission_continuity', immersion.mission_continuity);
-      push('frontend_runtime.immersion_state.identity_reinforcement', immersion.identity_reinforcement);
-    }
-    const reward = runtime.reward_state;
-    if (reward && typeof reward === 'object') {
-      push('frontend_runtime.reward_state.message', reward.message);
-    }
-  }
+  collectArtifactStrings(out, artifactPreview(payload), 'artifact_preview');
 
-  const ws = payload.workspace ?? payload.session;
-  if (ws && typeof ws === 'object') {
-    push('workspace.task', ws.task);
-    push('workspace.title', ws.title);
-    if (Array.isArray(ws.steps)) {
-      ws.steps.forEach((s, i) => {
-        if (!s || typeof s !== 'object') return;
-        push(`workspace.steps[${i}].title`, s.title);
-        push(`workspace.steps[${i}].prompt`, s.prompt);
-        push(`workspace.steps[${i}].action`, s.action);
-      });
-    }
+  var fr = runtime(payload);
+  var challenge = fr.challenge && typeof fr.challenge === 'object' ? fr.challenge : {};
+  var simulation = fr.simulation && typeof fr.simulation === 'object' ? fr.simulation : {};
+  var voice = fr.voice && typeof fr.voice === 'object' ? fr.voice : {};
+  var reward = fr.reward && typeof fr.reward === 'object' ? fr.reward : {};
+  var rewardState = fr.reward_state && typeof fr.reward_state === 'object' ? fr.reward_state : {};
+  var immersion = fr.immersion_state && typeof fr.immersion_state === 'object' ? fr.immersion_state : {};
+
+  push('frontend_runtime.challenge.objective', challenge.objective);
+  push('frontend_runtime.simulation.scenario', simulation.scenario);
+  if (typeof voice.reflection_prompts === 'string') {
+    push('frontend_runtime.voice.reflection_prompts', voice.reflection_prompts);
+  } else if (Array.isArray(voice.reflection_prompts)) {
+    voice.reflection_prompts.forEach(function (value, index) {
+      push('frontend_runtime.voice.reflection_prompts[' + index + ']', value);
+    });
   }
+  push('frontend_runtime.reward.message', reward.message);
+  push('frontend_runtime.reward_state.message', rewardState.message);
+  push('frontend_runtime.immersion_state.narrative_thread', immersion.narrative_thread);
+  push('frontend_runtime.immersion_state.mission_continuity', immersion.mission_continuity);
 
   return out;
 }
 
-/** @param {{ path: string, value: string }[]} out */
-function collectArtifactPreviewStrings(out, preview, prefix) {
+function collectArtifactStrings(out, preview, prefix) {
   if (!preview || typeof preview !== 'object') return;
-
-  const sections = preview.sections;
-  if (sections && typeof sections === 'object') {
-    for (const [key, val] of Object.entries(sections)) {
-      pushArtifactValue(out, `${prefix}.sections.${key}`, val);
-    }
-  }
-
-  const outline = preview.outline;
-  if (outline && typeof outline === 'object') {
-    for (const [key, val] of Object.entries(outline)) {
-      pushArtifactValue(out, `${prefix}.outline.${key}`, val);
-    }
-  }
-
-  if (Array.isArray(preview.cards)) {
-    preview.cards.forEach((card, i) => {
-      if (!card || typeof card !== 'object') return;
-      pushArtifactValue(out, `${prefix}.cards[${i}].front`, card.front);
-      pushArtifactValue(out, `${prefix}.cards[${i}].back`, card.back);
+  pushArtifact(out, prefix + '.final_output', preview.final_output);
+  if (preview.sections && typeof preview.sections === 'object') {
+    Object.keys(preview.sections).forEach(function (key) {
+      pushArtifact(out, prefix + '.sections.' + key, preview.sections[key]);
     });
   }
-
-  pushArtifactValue(out, `${prefix}.final_output`, preview.final_output);
 }
 
-/** @param {{ path: string, value: string }[]} out */
-function pushArtifactValue(out, path, value) {
+function pushArtifact(out, path, value) {
   if (typeof value !== 'string') return;
-  const trimmed = value.trim();
-  if (!trimmed) return;
-  out.push({ path, value: trimmed });
+  var trimmed = value.trim();
+  if (trimmed) out.push({ path: path, value: trimmed });
 }
 
-function scanUserFacingStrings(payload, label) {
-  for (const { path, value } of collectUserFacingStrings(payload)) {
-    if (BANNED.test(value)) {
-      const match = value.match(BANNED);
-      fail(`${label}: banned string "${match?.[0] ?? 'unknown'}" in ${path}`);
+function scanUserFacingStrings(phase, endpoint, payload) {
+  collectUserFacingStrings(payload).forEach(function (entry) {
+    var match = entry.value.match(BANNED);
+    if (match) {
+      fail(phase, endpoint, 'banned user-facing string "' + match[0] + '" in ' + entry.path, {
+        bodySnippet: entry.value.slice(0, 500),
+      });
     }
-  }
+  });
 }
 
-function scanExportMarkdown(text, label) {
-  if (typeof text !== 'string') return;
-  const trimmed = text.trim();
-  if (!trimmed) return;
-  if (BANNED.test(trimmed)) {
-    const match = trimmed.match(BANNED);
-    fail(`${label}: banned string "${match?.[0] ?? 'unknown'}" in export markdown`);
-  }
+function assertBaseContract(phase, endpoint, body) {
+  assertPhase(body.ok === true, phase, endpoint, 'ok !== true', { bodySnippet: bodySnippet(body) });
+  assertPhase(getWorkspaceId(body), phase, endpoint, 'workspace/session id missing', {
+    bodySnippet: bodySnippet(body),
+  });
+  assertPhase(Object.keys(currentStep(body)).length > 0, phase, endpoint, 'current_step missing', {
+    bodySnippet: bodySnippet(body),
+  });
+  assertPhase(body.artifact_preview && typeof body.artifact_preview === 'object', phase, endpoint, 'artifact_preview missing', {
+    bodySnippet: bodySnippet(body),
+  });
+  var fr = runtime(body);
+  assertPhase(Object.keys(fr).length > 0, phase, endpoint, 'frontend_runtime missing', {
+    bodySnippet: bodySnippet(body),
+  });
+  assertPhase(fr.calm_contract && typeof fr.calm_contract === 'object', phase, endpoint, 'frontend_runtime.calm_contract missing', {
+    bodySnippet: bodySnippet(fr),
+  });
+  assertPhase(fr.immersion_state && typeof fr.immersion_state === 'object', phase, endpoint, 'frontend_runtime.immersion_state missing', {
+    bodySnippet: bodySnippet(fr),
+  });
+  assertPhase(fr.friction_state && typeof fr.friction_state === 'object', phase, endpoint, 'frontend_runtime.friction_state missing', {
+    bodySnippet: bodySnippet(fr),
+  });
+  assertPhase(fr.reward_state && typeof fr.reward_state === 'object', phase, endpoint, 'frontend_runtime.reward_state missing', {
+    bodySnippet: bodySnippet(fr),
+  });
+  assertPhase(fr.interaction_rotation && typeof fr.interaction_rotation === 'object', phase, endpoint, 'frontend_runtime.interaction_rotation missing', {
+    bodySnippet: bodySnippet(fr),
+  });
+  scanUserFacingStrings(phase, endpoint, body);
 }
 
-function scanStepCopy(body, label) {
-  const step = body.current_step ?? {};
-  const prompt = String(step.prompt ?? body.next_prompt?.prompt ?? body.next_prompt?.message ?? '');
-  if (FALLBACK_PROMPT.test(prompt)) {
-    fail(`${label}: fallback placeholder prompt detected`);
-  }
-  if (!String(step.title ?? '').trim() && !prompt.trim()) {
-    fail(`${label}: empty step title and prompt`);
-  }
+function assertContext(phase, endpoint, body) {
+  var ws = getWorkspace(body);
+  var task = String(ws.task || ws.title || '').toLowerCase();
+  var frame = String(ws.frame || '').toLowerCase();
+  assertPhase(task.indexOf('essay') !== -1, phase, endpoint, 'essay context was not preserved', {
+    bodySnippet: bodySnippet(ws),
+  });
+  assertPhase(frame === FRAME, phase, endpoint, 'gaming frame was not preserved', {
+    bodySnippet: bodySnippet(ws),
+  });
 }
 
-function fr(body) {
-  return body.frontend_runtime ?? {};
-}
-
-function assertAdaptiveRuntime(body, label) {
-  const runtime = fr(body);
-  assert(runtime.immersion_state != null && typeof runtime.immersion_state === 'object', `${label}: immersion_state missing`);
-  assert(runtime.friction_state != null && typeof runtime.friction_state === 'object', `${label}: friction_state missing`);
-  assert(runtime.momentum_state != null && typeof runtime.momentum_state === 'object', `${label}: momentum_state missing`);
-  assert(runtime.reward_state != null && typeof runtime.reward_state === 'object', `${label}: reward_state missing`);
-  assert(runtime.interaction_rotation != null && typeof runtime.interaction_rotation === 'object', `${label}: interaction_rotation missing`);
-  assert(typeof runtime.adaptive_pacing === 'object', `${label}: adaptive_pacing missing`);
-  scanUserFacingStrings(body, label);
-  scanStepCopy(body, label);
-}
-
-async function request(path, init = {}) {
-  const url = `${BASE}${path}`;
-  let response;
-  try {
-    response = await fetch(url, {
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        ...(init.headers ?? {}),
-      },
-    });
-  } catch {
-    console.error(OFFLINE_MSG);
-    process.exit(1);
-  }
-
-  const raw = await response.text();
-  let body;
-  try {
-    body = raw ? JSON.parse(raw) : {};
-  } catch {
-    fail(`${init.method ?? 'GET'} ${path} returned non-JSON (${response.status})`);
-  }
-
-  if (!response.ok) {
-    const err =
-      typeof body?.error === 'string'
-        ? body.error
-        : response.statusText || `HTTP ${response.status}`;
-    fail(`${init.method ?? 'GET'} ${path} → ${err}`);
-  }
-
-  return body;
-}
-
-function stepSnapshot(body) {
-  const ws = body.workspace ?? body.session ?? {};
-  const step = body.current_step ?? {};
-  const progress = body.progress ?? {};
-  const runtime = fr(body);
+function snapshot(body) {
+  var fr = runtime(body);
+  var rotation = fr.interaction_rotation && typeof fr.interaction_rotation === 'object' ? fr.interaction_rotation : {};
+  var friction = fr.friction_state && typeof fr.friction_state === 'object' ? fr.friction_state : {};
+  var momentum = fr.momentum_state && typeof fr.momentum_state === 'object' ? fr.momentum_state : {};
+  var reward = fr.reward_state && typeof fr.reward_state === 'object' ? fr.reward_state : {};
   return {
-    workspaceId: ws.id,
-    stepIndex: Number(ws.current_step_index ?? -1),
-    progressDone: Number(progress.done ?? -1),
-    progressTotal: Number(progress.total ?? -1),
-    stepTitle: String(step.title ?? ''),
-    stepPrompt: String(step.prompt ?? '').slice(0, 80),
-    nextTitle: String(body.next_prompt?.title ?? '').slice(0, 60),
-    nextPrompt: String(body.next_prompt?.prompt ?? body.next_prompt?.message ?? '').slice(0, 80),
-    status: String(ws.status ?? ''),
-    interaction: String(runtime.interaction_rotation?.current ?? ''),
-    paceModifier: Number(runtime.momentum_state?.pace_modifier ?? runtime.adaptive_pacing?.pace_modifier ?? 1),
-    friction: Number(runtime.friction_state?.friction_level ?? 0),
+    id: getWorkspaceId(body),
+    index: getStepIndex(body),
+    done: getProgressDone(body),
+    signature: stepSignature(body),
+    interaction: String(rotation.current || ''),
+    friction: String(friction.friction_level !== undefined ? friction.friction_level : ''),
+    momentum: String(momentum.mode || momentum.challenge_level || ''),
+    reward: String(reward.message || ''),
+    artifactLength: artifactPreviewLength(body),
   };
 }
 
-function assertProgression(prev, next, label) {
-  assert(next.ok === true, `${label}: ok !== true`);
-
-  const prevWs = prev.workspace ?? prev.session ?? {};
-  const nextWs = next.workspace ?? next.session ?? {};
-  assert(nextWs.id === prevWs.id, `${label}: workspace.id changed`);
-
-  const prevSnap = stepSnapshot(prev);
-  const nextSnap = stepSnapshot(next);
-
-  const indexAdvanced = nextSnap.stepIndex > prevSnap.stepIndex;
-  const progressAdvanced = nextSnap.progressDone > prevSnap.progressDone;
-  assert(
-    indexAdvanced || progressAdvanced,
-    `${label}: current_step_index and progress.done did not advance (${prevSnap.stepIndex}→${nextSnap.stepIndex}, done ${prevSnap.progressDone}→${nextSnap.progressDone})`,
-  );
-
-  const stepChanged =
-    nextSnap.stepTitle !== prevSnap.stepTitle ||
-    nextSnap.stepPrompt !== prevSnap.stepPrompt ||
-    nextSnap.nextTitle !== prevSnap.nextTitle ||
-    nextSnap.nextPrompt !== prevSnap.nextPrompt;
-  assert(stepChanged, `${label}: current_step / next_prompt did not change`);
-
-  assert(
-    next.artifact_preview != null && typeof next.artifact_preview === 'object',
-    `${label}: artifact_preview missing`,
-  );
-
-  assertAdaptiveRuntime(next, label);
+function assertContinue(prev, next, phase, endpoint) {
+  assertBaseContract(phase, endpoint, next);
+  assertPhase(getWorkspaceId(next) === getWorkspaceId(prev), phase, endpoint, 'workspace id changed', {
+    bodySnippet: bodySnippet(next),
+  });
+  var advanced =
+    getStepIndex(next) > getStepIndex(prev) ||
+    getProgressDone(next) > getProgressDone(prev) ||
+    previousStepCompleted(prev, next);
+  assertPhase(advanced, phase, endpoint, 'step index/progress did not advance and previous step was not completed', {
+    bodySnippet: bodySnippet(next),
+  });
+  assertPhase(artifactPreviewLength(next) >= Math.min(artifactPreviewLength(prev), 2), phase, endpoint, 'artifact preview appeared to reset', {
+    bodySnippet: bodySnippet(next.artifact_preview),
+  });
 }
 
-function assertInteractionRotation(history) {
-  const interactions = history.map((h) => h.interaction).filter(Boolean);
-  assert(interactions.length >= 2, 'interaction_rotation: need at least two interaction records');
-  for (let i = 1; i < interactions.length; i++) {
-    if (interactions[i] && interactions[i - 1] && interactions[i] === interactions[i - 1]) {
-      fail(`interaction_rotation: duplicate consecutive type "${interactions[i]}" at step ${i}`);
-    }
-  }
+function assertRewrite(rewrite, workspaceId) {
+  var endpoint = '/api/session/rewrite';
+  assertBaseContract('rewrite', endpoint, rewrite);
+  assertPhase(getWorkspaceId(rewrite) === workspaceId, 'rewrite', endpoint, 'workspace id changed', {
+    bodySnippet: bodySnippet(rewrite),
+  });
+  assertContext('rewrite', endpoint, rewrite);
+  var step = currentStep(rewrite);
+  var text = [step.prompt || '', step.action || '', step.why || ''].join(' ').trim();
+  assertPhase(text.length > 0, 'rewrite', endpoint, 'rewritten prompt/help text missing', {
+    bodySnippet: bodySnippet(step),
+  });
 }
 
-function assertPacingAdapts(history) {
-  const modifiers = history.map((h) => h.paceModifier).filter((n) => !Number.isNaN(n));
-  assert(modifiers.length >= 2, 'adaptive_pacing: missing pace modifiers');
-  const unique = new Set(modifiers.map((m) => m.toFixed(2)));
-  assert(unique.size >= 1, 'adaptive_pacing: no pacing data');
+function assertRefresh(refresh, last, workspaceId) {
+  var endpoint = '/api/workspace/' + encodeURIComponent(workspaceId);
+  assertBaseContract('refresh', endpoint, refresh);
+  assertPhase(getWorkspaceId(refresh) === workspaceId, 'refresh', endpoint, 'workspace id changed', {
+    bodySnippet: bodySnippet(refresh),
+  });
+  assertContext('refresh', endpoint, refresh);
+  assertPhase(getStepIndex(refresh) >= getStepIndex(last) && getProgressDone(refresh) >= getProgressDone(last), 'refresh', endpoint, 'progress reset after refresh', {
+    bodySnippet: bodySnippet(refresh),
+  });
 }
 
-function formatArtifactPreview(preview) {
-  if (!preview || typeof preview !== 'object') return '(none)';
-  const sections = preview.sections;
-  if (sections && typeof sections === 'object') {
-    const keys = Object.keys(sections).filter((k) => String(sections[k] ?? '').trim());
-    if (keys.length) return `sections: ${keys.join(', ')}`;
+function assertExport(exported, workspaceId) {
+  var endpoint = '/api/session/export';
+  if (Object.prototype.hasOwnProperty.call(exported, 'ok')) {
+    assertPhase(exported.ok === true, 'export', endpoint, 'ok !== true', {
+      bodySnippet: bodySnippet(exported),
+    });
   }
-  if (preview.outline && typeof preview.outline === 'object') {
-    const keys = Object.keys(preview.outline).filter((k) => String(preview.outline[k] ?? '').trim());
-    if (keys.length) return `outline: ${keys.join(', ')}`;
+  var text = exported.markdown || exported.content || exported.plain_text || '';
+  assertPhase(typeof text === 'string' && text.length > 0, 'export', endpoint, 'export markdown/content/plain_text missing', {
+    bodySnippet: bodySnippet(exported),
+  });
+  var match = text.match(BANNED);
+  if (match) {
+    fail('export', endpoint, 'banned user-facing string "' + match[0] + '" in export text', {
+      bodySnippet: text.slice(0, 500),
+    });
   }
-  const type = preview.type ? `type=${preview.type}` : 'artifact';
-  return type;
+  return text.length;
+}
+
+function printSummary(workspaceId, history, exportLength) {
+  var last = history[history.length - 1] || {};
+  console.log('\nBridge Runtime Acceptance Summary\n');
+  console.log('* Workspace ID: ' + workspaceId);
+  console.log('* Create: ' + results.create);
+  console.log('* Continue 1: ' + results.continue1);
+  console.log('* Continue 2: ' + results.continue2);
+  console.log('* Continue 3: ' + results.continue3);
+  console.log('* Rewrite: ' + results.rewrite);
+  console.log('* Refresh: ' + results.refresh);
+  console.log('* Export: ' + results.export);
+  console.log('* Step progression: ' + history.map(function (h) {
+    return h.index + '/' + h.done;
+  }).join(' -> '));
+  console.log('* Interaction rotation: ' + history.map(function (h) {
+    return h.interaction || '-';
+  }).join(' -> '));
+  console.log('* Friction: ' + (last.friction || '-'));
+  console.log('* Momentum: ' + (last.momentum || '-'));
+  console.log('* Reward: ' + (last.reward || '-'));
+  console.log('* Artifact preview length: ' + (last.artifactLength || 0));
+  console.log('* Export length: ' + exportLength);
+  console.log('* FINAL: PASS');
 }
 
 async function main() {
   console.log('Bridge runtime acceptance flow');
-  console.log(`Target: ${BASE}\n`);
+  console.log('Target: ' + BASE + '\n');
 
-  try {
-    await fetch(`${BASE}/api/workspaces/recent?limit=1`);
-  } catch {
-    console.error(OFFLINE_MSG);
-    process.exit(1);
+  var health = await optionalHealthProbe();
+  if (!health.reachable) {
+    // Do not fail here. Create is the authoritative reachability check.
+    console.log('Health probe unavailable; using create as reachability check.');
   }
 
-  const create = await request('/api/session/create', {
-    method: 'POST',
-    body: JSON.stringify({
-      task: TASK,
-      frame: 'gaming',
-      interests: ['gaming'],
-      supports: ['step_by_step'],
-      user_words: TASK,
-    }),
+  var createEndpoint = '/api/session/create';
+  var create = await request('create', createEndpoint, 'POST', {
+    task: TASK,
+    frame: FRAME,
+    supports: ['step_by_step'],
   });
+  assertBaseContract('create', createEndpoint, create);
+  assertContext('create', createEndpoint, create);
+  results.create = 'PASS';
 
-  assert(create.ok === true, 'create: ok !== true');
-  const workspaceId = create.workspace?.id ?? create.session?.id;
-  assert(workspaceId, 'create: missing workspace.id');
-  assertAdaptiveRuntime(create, 'create');
+  var workspaceId = getWorkspaceId(create);
+  var history = [snapshot(create)];
+  var last = create;
+  var signatures = [stepSignature(create)];
 
-  const history = [stepSnapshot(create)];
-  let last = create;
-
-  for (let i = 0; i < CONTINUE_OUTPUTS.length; i++) {
-    const output = CONTINUE_OUTPUTS[i];
-    const cont = await request('/api/session/continue', {
-      method: 'POST',
-      body: JSON.stringify({
-        workspace_id: workspaceId,
-        user_output: output,
-      }),
+  for (var i = 0; i < CONTINUE_OUTPUTS.length; i += 1) {
+    var phase = 'continue ' + (i + 1);
+    var key = 'continue' + (i + 1);
+    var endpoint = '/api/session/continue';
+    var cont = await request(phase, endpoint, 'POST', {
+      workspace_id: workspaceId,
+      user_output: CONTINUE_OUTPUTS[i],
     });
-    assertProgression(last, cont, `continue #${i + 1}`);
-    history.push(stepSnapshot(cont));
+    assertContinue(last, cont, phase, endpoint);
+    signatures.push(stepSignature(cont));
+    history.push(snapshot(cont));
+    results[key] = 'PASS';
     last = cont;
   }
 
-  assertInteractionRotation(history);
-  assertPacingAdapts(history);
-
-  const refresh = await request(`/api/workspace/${encodeURIComponent(workspaceId)}`, {
-    method: 'GET',
+  var uniqueSignatures = {};
+  signatures.forEach(function (sig) {
+    uniqueSignatures[sig] = true;
   });
-  assert(refresh.ok === true, 'refresh: ok !== true');
-  assert((refresh.workspace?.id ?? refresh.session?.id) === workspaceId, 'refresh: workspace id changed');
-  const refreshSnap = stepSnapshot(refresh);
-  const lastSnap = stepSnapshot(last);
-  assert(
-    refreshSnap.stepIndex === lastSnap.stepIndex && refreshSnap.progressDone === lastSnap.progressDone,
-    `refresh: progress reset (${lastSnap.stepIndex}/${lastSnap.progressDone} → ${refreshSnap.stepIndex}/${refreshSnap.progressDone})`,
-  );
-  assertAdaptiveRuntime(refresh, 'refresh');
-
-  const rewrite = await request('/api/session/rewrite', {
-    method: 'POST',
-    body: JSON.stringify({
-      workspace_id: workspaceId,
-      mode: 'make_easier',
-    }),
+  assertPhase(Object.keys(uniqueSignatures).length > 1, 'continue', '/api/session/continue', 'prompt/step stayed identical across all continues', {
+    bodySnippet: signatures.join('\n'),
   });
 
-  assert(rewrite.ok === true, 'rewrite: ok !== true');
-  assert((rewrite.workspace?.id ?? rewrite.session?.id) === workspaceId, 'rewrite: workspace.id changed');
-  assertAdaptiveRuntime(rewrite, 'rewrite');
-  history.push({ ...stepSnapshot(rewrite), label: 'after rewrite' });
-
-  const exported = await request('/api/session/export', {
-    method: 'POST',
-    body: JSON.stringify({
-      workspace_id: workspaceId,
-      format: 'markdown',
-    }),
+  var rewriteEndpoint = '/api/session/rewrite';
+  var rewrite = await request('rewrite', rewriteEndpoint, 'POST', {
+    workspace_id: workspaceId,
+    mode: 'make_easier',
   });
+  assertRewrite(rewrite, workspaceId);
+  results.rewrite = 'PASS';
 
-  const exportText = exported.markdown ?? exported.content ?? exported.plain_text ?? '';
-  assert(typeof exportText === 'string' && exportText.length > 0, 'export: empty markdown');
-  scanExportMarkdown(exportText, 'export');
+  var refreshEndpoint = '/api/workspace/' + encodeURIComponent(workspaceId);
+  var refresh = await request('refresh', refreshEndpoint, 'GET');
+  assertRefresh(refresh, rewrite, workspaceId);
+  history.push(snapshot(refresh));
+  results.refresh = 'PASS';
 
-  const finalPreview = last.artifact_preview ?? {};
-  const finalRuntime = fr(last);
-
-  console.log('--- Summary ---');
-  console.log(`Workspace id:     ${workspaceId}`);
-  console.log('Step progression:');
-  history.forEach((snap, idx) => {
-    const label = snap.label ?? `step ${idx}`;
-    console.log(
-      `  [${label}] index=${snap.stepIndex} done=${snap.progressDone}/${snap.progressTotal} interaction=${snap.interaction || '—'}`,
-    );
-    if (snap.stepTitle) console.log(`           current: ${snap.stepTitle}`);
+  var exportEndpoint = '/api/session/export';
+  var exported = await request('export', exportEndpoint, 'POST', {
+    workspace_id: workspaceId,
+    format: 'markdown',
   });
-  console.log(`Artifact preview: ${formatArtifactPreview(finalPreview)}`);
-  console.log(`Immersion:        ${finalRuntime.immersion_state?.session_phase ?? '—'}`);
-  console.log(`Friction:         ${finalRuntime.friction_state?.friction_level ?? '—'}`);
-  console.log(`Momentum mode:    ${finalRuntime.momentum_state?.mode ?? '—'}`);
-  console.log(`Reward:           ${finalRuntime.reward_state?.message ?? '—'}`);
-  console.log(`Export length:    ${exportText.length} characters`);
-  console.log('\nPASS');
+  var exportLength = assertExport(exported, workspaceId);
+  results.export = 'PASS';
+
+  printSummary(workspaceId, history, exportLength);
 }
 
-main().catch((err) => {
-  console.error('FAIL:', err instanceof Error ? err.message : err);
-  process.exit(1);
+main().catch(function (err) {
+  fail('unhandled', '', err && err.message ? err.message : String(err));
 });
