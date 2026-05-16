@@ -27,7 +27,7 @@ export async function openBridgeSession(params: {
   initialContract: NormalizedRuntimeContract;
 }> {
   const trimmed = params.task.trim();
-  if (trimmed.length < 3) {
+  if (trimmed.length < 1) {
     throw new Error('Task is too short');
   }
   const picked =

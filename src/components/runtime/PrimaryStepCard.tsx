@@ -14,9 +14,9 @@ function eyebrowForTone(tone: ReturnType<typeof getInteractionTone>): string {
     case 'professional':
       return 'Next move';
     case 'gentle':
-      return 'When you are ready';
+      return 'Tiny next move';
     case 'focused':
-      return 'Stay in the flow';
+      return 'Stay with it';
     default:
       return 'Your next step';
   }
@@ -68,7 +68,7 @@ export function PrimaryStepCard({ contract }: { contract: NormalizedRuntimeContr
       </p>
       {step.action ? (
         <p className={`session-step__action ${styles.primaryStepAction}`}>
-          <span className="session-step__action-label">Done when</span>
+          <span className="session-step__action-label">Finish line</span>
           {step.action}
         </p>
       ) : null}

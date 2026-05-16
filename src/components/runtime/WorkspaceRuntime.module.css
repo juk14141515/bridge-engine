@@ -23,11 +23,22 @@
   --runtime-stack-gap: 20px;
 }
 
+.runtimeShellAdvancing {
+  filter: saturate(1.04);
+}
+
 .stack {
   display: flex;
   flex-direction: column;
   gap: var(--runtime-stack-gap, 14px);
   transition: gap var(--runtime-motion-ms, 280ms) ease;
+}
+
+.flowStatus {
+  order: 1;
+  margin: -4px 2px 0;
+  color: rgba(125, 215, 178, 0.86);
+  animation: flowStatusIn 380ms ease both;
 }
 
 .primaryStep {
@@ -183,7 +194,9 @@
 .primaryStepShell {
   transition:
     box-shadow var(--runtime-motion-ms, 280ms) ease,
-    border-color var(--runtime-motion-ms, 280ms) ease;
+    border-color var(--runtime-motion-ms, 280ms) ease,
+    transform var(--runtime-motion-ms, 280ms) ease;
+  animation: primaryStepIn var(--runtime-motion-ms, 280ms) ease both;
 }
 
 .primaryStepShell--density-low .primaryStepPrompt {
@@ -228,12 +241,28 @@
 }
 
 /* Work input density */
-.workInputShell--density-low .session-write__textarea {
-  min-height: 120px;
+.workInputShell {
+  transition:
+    border-color var(--runtime-motion-ms, 280ms) ease,
+    background var(--runtime-motion-ms, 280ms) ease;
 }
 
-.workInputShell--density-immersive .session-write__textarea {
-  min-height: 140px;
+.workInputShell :global(.session-write__textarea) {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.workInputShell--density-low :global(.session-write__textarea) {
+  min-height: 104px;
+}
+
+.workInputShell--density-immersive :global(.session-write__textarea) {
+  min-height: 138px;
+}
+
+.workInputHint {
+  margin: 8px 2px 0;
+  font-size: 12px;
+  color: rgba(154, 168, 188, 0.72);
 }
 
 /* Step trail: focus / calm */
@@ -317,6 +346,36 @@
 .interactionCard--default {
   border-color: rgba(125, 215, 178, 0.2);
   background: rgba(125, 215, 178, 0.05);
+}
+
+@keyframes primaryStepIn {
+  from {
+    opacity: 0.72;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes flowStatusIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .primaryStepShell,
+  .flowStatus {
+    animation: none;
+    transition: none;
+  }
 }
 
 @media (min-width: 900px) {

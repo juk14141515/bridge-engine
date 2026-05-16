@@ -469,7 +469,9 @@ textarea.field {
 .fast-entry {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 16px;
+  max-width: 760px;
+  margin: 0 auto;
 }
 
 .fast-entry__top {
@@ -477,19 +479,21 @@ textarea.field {
 }
 
 .fast-entry__title {
-  font-size: clamp(28px, 5.5vw, 44px);
+  font-size: clamp(30px, 6vw, 48px);
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1.06;
-  margin: 4px 0 6px;
+  margin: 8px 0 0;
+  text-align: center;
 }
 
 .fast-entry__lede {
-  margin: 0 0 6px;
+  margin: 0 auto;
   color: var(--muted);
   font-size: 16px;
   line-height: 1.55;
-  max-width: 58ch;
+  max-width: 54ch;
+  text-align: center;
 }
 
 .fast-entry__or {
@@ -500,6 +504,140 @@ textarea.field {
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: rgba(154, 168, 188, 0.75);
+}
+
+.bridge-transform-row {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(238, 242, 248, 0.9);
+  font-size: 13px;
+  text-align: center;
+}
+
+.bridge-transform-examples {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: -8px;
+  color: rgba(154, 168, 188, 0.78);
+  font-size: 12px;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.choice-section {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.choice-section__label {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 650;
+  color: rgba(238, 242, 248, 0.94);
+}
+
+.start-chip-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.start-chip-grid--interests {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.start-choice-chip {
+  min-height: 44px;
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  background: rgba(255, 255, 255, 0.035);
+  color: rgba(238, 242, 248, 0.92);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 560;
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    border-color 0.16s ease,
+    transform 0.16s ease;
+}
+
+.login-page {
+  min-height: calc(100vh - 150px);
+  display: grid;
+  align-content: center;
+  gap: 14px;
+  max-width: 460px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.login-page__title {
+  margin: 0;
+  font-size: clamp(30px, 6vw, 44px);
+  letter-spacing: -0.03em;
+}
+
+.login-page__lede {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.login-page__panel {
+  display: grid;
+  gap: 8px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.login-page__note {
+  margin: 0;
+}
+
+.start-choice-chip:hover {
+  transform: translateY(-1px);
+  border-color: rgba(125, 215, 178, 0.32);
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.start-choice-chip--active {
+  border-color: rgba(125, 215, 178, 0.58);
+  background: rgba(125, 215, 178, 0.12);
+  color: var(--text);
+}
+
+.bridge-live-preview {
+  padding: 13px 15px;
+  border-radius: 18px;
+  border: 1px solid rgba(125, 215, 178, 0.22);
+  background:
+    linear-gradient(135deg, rgba(125, 215, 178, 0.105), rgba(56, 189, 248, 0.045));
+}
+
+.bridge-live-preview__route {
+  display: block;
+  margin-bottom: 4px;
+  color: rgba(125, 215, 178, 0.95);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.bridge-live-preview p {
+  margin: 0;
+  color: rgba(238, 242, 248, 0.92);
+  font-size: 14px;
+  line-height: 1.45;
 }
 
 .fast-entry__composer {
@@ -543,11 +681,17 @@ textarea.field {
   padding: 16px 16px;
   margin: 0 2px 2px;
   outline: none;
-  min-height: 88px;
-  resize: vertical;
+  min-height: 72px;
+  resize: none;
   font-size: 16px;
   line-height: 1.5;
   transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.fast-entry__input--small {
+  min-height: 0;
+  height: 46px;
+  padding: 0 14px;
 }
 
 .fast-entry__input::placeholder {
@@ -605,7 +749,7 @@ textarea.field {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-top: 8px;
+  margin-top: 0;
 }
 
 .fast-entry__primary {
@@ -616,6 +760,43 @@ textarea.field {
 .fast-entry__customize {
   align-self: center;
   font-size: 13px;
+}
+
+.custom-task-fold {
+  text-align: center;
+}
+
+.custom-task-fold summary {
+  display: inline-flex;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 13px;
+  list-style: none;
+}
+
+.custom-task-fold summary::-webkit-details-marker {
+  display: none;
+}
+
+.custom-task-fold[open] {
+  text-align: left;
+  padding: 10px 0 0;
+}
+
+@media (max-width: 640px) {
+  .bridge-transform-row {
+    grid-template-columns: 1fr;
+    border-radius: 18px;
+  }
+
+  .bridge-transform-row [aria-hidden] {
+    display: none;
+  }
+
+  .start-chip-grid,
+  .start-chip-grid--interests {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 /* —— Customize panel (collapsed advanced) —— */
@@ -1093,8 +1274,8 @@ textarea.field {
 /* —— Active step —— */
 
 .session-step {
-  padding: 18px 20px 20px;
-  border-radius: var(--radius-md);
+  padding: 22px 22px 24px;
+  border-radius: 24px;
   border: 1px solid var(--border);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.02));
@@ -1124,7 +1305,7 @@ textarea.field {
 }
 
 .session-step__title {
-  font-size: clamp(18px, 3.5vw, 22px);
+  font-size: clamp(20px, 4vw, 28px);
   font-weight: 600;
   letter-spacing: -0.02em;
   line-height: 1.25;
@@ -1151,8 +1332,8 @@ textarea.field {
 
 .session-step__prompt {
   margin: 0;
-  font-size: 16px;
-  line-height: 1.55;
+  font-size: 16.5px;
+  line-height: 1.62;
   color: var(--text);
 }
 
@@ -1187,8 +1368,8 @@ textarea.field {
 /* —— Writing area —— */
 
 .session-write {
-  padding: 18px 20px 20px;
-  border-radius: var(--radius-md);
+  padding: 16px 18px 18px;
+  border-radius: 22px;
   border: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.025);
 }
@@ -1205,14 +1386,14 @@ textarea.field {
 
 .session-write__textarea {
   width: 100%;
-  border-radius: var(--radius-sm);
+  border-radius: 18px;
   border: 1px solid var(--border);
   background: rgba(15, 21, 31, 0.55);
   color: var(--text);
   padding: 14px 16px;
   outline: none;
-  min-height: 130px;
-  resize: vertical;
+  min-height: 118px;
+  resize: none;
   font-size: 15px;
   line-height: 1.55;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -1235,7 +1416,7 @@ textarea.field {
 }
 
 .session-write__cta {
-  min-height: 50px;
+  min-height: 48px;
   font-size: 16px;
 }
 

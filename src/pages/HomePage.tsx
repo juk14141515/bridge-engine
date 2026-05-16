@@ -1,22 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { QuickStartBar } from '../components/QuickStartBar';
 import { formatUserApiError, sessionTaskLabel } from '../lib/displayLabels';
 import { fetchRecentWorkspaces, type RecentWorkspaceSummary } from '../lib/sessionApi';
-import {
-  FRAME_CHIPS,
-  SURPRISE_FRAME_ID,
-  frameTitle,
-  frameEmoji,
-} from '../lib/onboardingOptions';
-import {
-  PRODUCT_EYEBROW,
-  PRODUCT_EXAMPLE_CALLOUT_BODY,
-  PRODUCT_EXAMPLE_CALLOUT_TITLE,
-  PRODUCT_CHIP_SECTION_LABEL,
-  PRODUCT_HERO_LEDE,
-  PRODUCT_HERO_TITLE,
-} from '../lib/productPitch';
+import { frameTitle, frameEmoji } from '../lib/onboardingOptions';
 
 function formatUpdated(iso?: string): string {
   if (!iso) return '';
@@ -36,8 +22,6 @@ function formatUpdated(iso?: string): string {
 
 export default function HomePage() {
   const navigate = useNavigate();
-  const [task, setTask] = useState('');
-  const [frame, setFrame] = useState<string | null>(null);
   const [workspaces, setWorkspaces] = useState<RecentWorkspaceSummary[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -59,81 +43,22 @@ export default function HomePage() {
     void load();
   }, [load]);
 
-  function start() {
-    const t = task.trim();
-    if (t.length < 3) {
-      navigate('/start', frame ? { state: { initialFrame: frame } } : undefined);
-      return;
-    }
-    navigate('/start', { state: { initialTask: t, initialFrame: frame ?? undefined } });
-  }
-
   return (
     <div className="home-page">
-      <p className="pitch-eyebrow">{PRODUCT_EYEBROW}</p>
-      <h1 className="home-title">{PRODUCT_HERO_TITLE}</h1>
-      <p className="home-lede">{PRODUCT_HERO_LEDE}</p>
-
-      <aside className="pitch-callout" aria-label="Example">
-        <p className="pitch-callout__title">{PRODUCT_EXAMPLE_CALLOUT_TITLE}</p>
-        <p className="pitch-callout__body">{PRODUCT_EXAMPLE_CALLOUT_BODY}</p>
-      </aside>
-
-      <QuickStartBar onError={setError} />
-
-      <p className="home-or">Or write your own</p>
-
-      <textarea
-        className="home-input"
-        rows={2}
-        placeholder="Something you need to finish or get through"
-        value={task}
-        onChange={(e) => setTask(e.target.value)}
-        aria-label="Something you need to finish or get through"
-      />
-
-      <p className="chip-section-label">{PRODUCT_CHIP_SECTION_LABEL}</p>
-
-      <div className="frame-chip-row">
-        {FRAME_CHIPS.map((f) => (
-          <button
-            key={f.id}
-            type="button"
-            className={`frame-chip ${frame === f.id ? 'frame-chip--active' : ''}`}
-            onClick={() => setFrame((prev) => (prev === f.id ? null : f.id))}
-            aria-pressed={frame === f.id}
-          >
-            <span className="frame-chip__emoji" aria-hidden>
-              {f.emoji}
-            </span>
-            <span className="frame-chip__title">{f.title}</span>
-          </button>
-        ))}
-        <button
-          type="button"
-          className={`frame-chip frame-chip--surprise ${frame === SURPRISE_FRAME_ID ? 'frame-chip--active' : ''}`}
-          onClick={() =>
-            setFrame((prev) => (prev === SURPRISE_FRAME_ID ? null : SURPRISE_FRAME_ID))
-          }
-          aria-pressed={frame === SURPRISE_FRAME_ID}
-        >
-          <span className="frame-chip__emoji" aria-hidden>
-            ✨
-          </span>
-          <span className="frame-chip__title">Surprise me</span>
-        </button>
-      </div>
-
+      <h1 className="home-title">Sessions</h1>
+      <p className="home-lede">
+        Resume a hard thing being translated through an interest, or start a new Bridge.
+      </p>
       <div className="home-cta-row">
         <button
           type="button"
           className="btn btn-primary btn-lg btn-block home-cta-primary"
-          onClick={start}
+          onClick={() => navigate('/start')}
         >
-          Start now
+          Start Bridge
         </button>
-        <Link className="btn btn-quiet home-cta-customize" to="/start">
-          Customize more
+        <Link className="btn btn-quiet home-cta-customize" to="/">
+          How Bridge works
         </Link>
       </div>
 
@@ -160,8 +85,7 @@ export default function HomePage() {
 
         {!loading && !workspaces.length && !error ? (
           <p className="muted small recent-empty">
-            No sessions yet. Try a quick-start button above, or type one short line and tap Start. You can
-            open this app as often as you need; nothing is timed.
+            No sessions yet. Pick a hard thing, pick an interest, and Bridge will build the path.
           </p>
         ) : null}
 
@@ -179,14 +103,14 @@ export default function HomePage() {
               <li key={w.id}>
                 <Link className="recent-card" to={`/workspace/${w.id}`}>
                   <div className="recent-card__main">
-                    <span className="recent-card__title">{taskLabel}</span>
+                    <span className="recent-card__title">{taskLabel} → {fTitle}</span>
                     <span className="recent-card__meta">
                       {fEmoji ? (
                         <>
-                          <span aria-hidden>{fEmoji}</span> {fTitle}
+                          <span aria-hidden>{fEmoji}</span> Continue
                         </>
                       ) : (
-                        fTitle || '—'
+                        'Continue'
                       )}
                       {updated ? <span className="recent-card__dot"> · </span> : null}
                       {updated}
@@ -201,7 +125,7 @@ export default function HomePage() {
                         <span style={{ width: `${pct}%` }} />
                       </div>
                       <span className="muted small recent-card__progress-label">
-                        {done}/{total}
+                        {done} of {total} steps complete
                       </span>
                     </div>
                   ) : null}

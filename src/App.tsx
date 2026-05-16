@@ -5,6 +5,7 @@ import { AppShell } from "./components/layout/AppShell";
 import WorkspacePage from "./pages/WorkspacePage";
 import HomePage from "./pages/HomePage";
 import StartPage from "./pages/StartPage";
+import LoginPage from "./pages/LoginPage";
 
 export function App() {
   return (
@@ -13,6 +14,7 @@ export function App() {
         <Route path="/" element={<LandingPage />} />
         <Route path="/home" element={<HomePage />} />
         <Route path="/start" element={<StartPage />} />
+        <Route path="/login" element={<LoginPage />} />
         <Route path="/workspace/:workflowId" element={<WorkspacePage />} />
         {/* Legacy routes → current product flow */}
         <Route path="/app" element={<Navigate to="/start" replace />} />

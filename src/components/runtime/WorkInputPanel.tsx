@@ -8,9 +8,9 @@ import {
 import styles from './WorkspaceRuntime.module.css';
 
 function workLabel(tone: ReturnType<typeof getInteractionTone>): string {
-  if (tone === 'professional') return 'Your output for this step';
+  if (tone === 'professional') return 'Next useful fragment';
   if (tone === 'gentle') return 'A few words are enough';
-  return 'Your work for this step';
+  return 'Keep the thread moving';
 }
 
 function placeholderFor(
@@ -20,7 +20,7 @@ function placeholderFor(
   if (density === 'low') return 'One sentence is enough.';
   if (tone === 'professional') return 'Draft the smallest useful fragment.';
   if (tone === 'gentle') return 'Rough notes are fine — no polish needed.';
-  return 'Type something rough. One sentence is enough.';
+  return 'Write the next small piece. Messy is fine.';
 }
 
 export function WorkInputPanel({
@@ -43,7 +43,7 @@ export function WorkInputPanel({
   const canContinue = !needsOutput || draft.trim().length > 0;
   const tone = getInteractionTone(contract);
   const density = getRuntimeDensity(contract);
-  const rows = density === 'low' ? 4 : density === 'immersive' ? 6 : 5;
+  const rows = density === 'low' ? 3 : density === 'immersive' ? 5 : 4;
 
   return (
     <section
@@ -67,6 +67,9 @@ export function WorkInputPanel({
         onChange={(e) => onDraftChange(e.target.value)}
         disabled={busy || disabled}
       />
+      <p className={styles.workInputHint}>
+        {density === 'low' ? 'Tiny is enough.' : 'Bridge adapts after this.'}
+      </p>
       <div className="session-write__actions">
         <button
           type="button"
@@ -74,7 +77,7 @@ export function WorkInputPanel({
           onClick={onContinue}
           disabled={busy || disabled || !canContinue}
         >
-          {busy ? 'Saving…' : 'Save and continue'}
+          {busy ? 'Continuing…' : 'Continue'}
         </button>
       </div>
     </section>

@@ -74,6 +74,7 @@ export default function WorkspacePage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(() => !contract);
   const [busy, setBusy] = useState(false);
+  const [advancing, setAdvancing] = useState(false);
   const [helpNotice, setHelpNotice] = useState<string | null>(null);
   const [exportText, setExportText] = useState<string | null>(null);
   const [exportCopied, setExportCopied] = useState(false);
@@ -171,7 +172,6 @@ export default function WorkspacePage() {
   const hasArtifact = artifactHasMeaningfulContent(artifactPreview);
   const interactionCards = contract ? getVisibleInteractionCards(contract) : [];
   const pathwayChips = contract ? getPathwayChips(contract) : [];
-  const stepIndex = Number(workspace?.current_step_index ?? 0);
   const runtimeDensity = contract ? getRuntimeDensity(contract) : 'normal';
   const isLowDensity = runtimeDensity === 'low';
   const hideSecondaryNav = focusLayout || isLowDensity || minimal;
@@ -182,6 +182,7 @@ export default function WorkspacePage() {
     if (!output) return;
 
     setBusy(true);
+    setAdvancing(true);
     setError(null);
     setHelpNotice(null);
     const seq = loadGen.current.next();
@@ -193,7 +194,9 @@ export default function WorkspacePage() {
       setDraft('');
       setExportText(null);
       setExportCopied(false);
+      window.setTimeout(() => setAdvancing(false), 380);
     } catch (e) {
+      setAdvancing(false);
       setError(formatUserApiError(e, "Couldn't save this step. Try again."));
     } finally {
       setBusy(false);
@@ -203,6 +206,7 @@ export default function WorkspacePage() {
   async function handleRewrite(mode: RewriteMode) {
     if (!contract?.workspace?.id || busy) return;
     setBusy(true);
+    setAdvancing(true);
     setError(null);
     const seq = loadGen.current.next();
 
@@ -212,7 +216,9 @@ export default function WorkspacePage() {
       applyContract(next);
       const label = REWRITE_MODES.find((m) => m.mode === mode);
       setHelpNotice(`Adjusted: ${professional ? label?.proLabel : label?.label ?? mode}`);
+      window.setTimeout(() => setAdvancing(false), 320);
     } catch (e) {
+      setAdvancing(false);
       setError(formatUserApiError(e, "Couldn't adjust this step. Try again."));
     } finally {
       setBusy(false);
@@ -249,7 +255,7 @@ export default function WorkspacePage() {
     <div
       className={`session ${styles.runtimeShell} ${styles[`runtimeShell--density-${runtimeDensity}`]} ${
         focusLayout ? styles.runtimeShellFocus : ''
-      }`}
+      } ${advancing ? styles.runtimeShellAdvancing : ''}`}
     >
       <header className="session__top">
         <Link className="btn btn-quiet" to="/home">
@@ -326,12 +332,15 @@ export default function WorkspacePage() {
                 {fEmoji}
               </span>
               <span className="session-identity__frame-text">
-                <span className="session-identity__frame-label">Using</span>
+                <span className="session-identity__frame-label">Translating through</span>
                 <span className="session-identity__frame-name">{fTitle}</span>
               </span>
             </div>
-            <h1 className="session-identity__task">{task}</h1>
-            {fBlurb ? <p className="session-identity__sub">{fBlurb}</p> : null}
+            <h1 className="session-identity__task">{task} → {fTitle}</h1>
+            <p className="session-identity__sub">
+              Bridge is turning this into {fTitle.toLowerCase()}-shaped steps until it is done.
+              {fBlurb ? ` ${fBlurb}` : ''}
+            </p>
             <ProgressPill done={progress.done} total={progress.total} percent={progress.percent} />
             {rewardNotice ? (
               <p className="session-identity__reward muted small" role="status">
@@ -362,10 +371,15 @@ export default function WorkspacePage() {
                   onCopy={() => void handleCopyExport()}
                 />
               ) : (
-                <div className={styles.stack} key={`step-${stepIndex}`}>
+                <div className={styles.stack}>
                   <div className={styles.primaryStep}>
                     <PrimaryStepCard contract={contract} />
                   </div>
+                  {advancing ? (
+                    <p className={`muted small ${styles.flowStatus}`} role="status">
+                      Carrying your thread forward…
+                    </p>
+                  ) : null}
                   <div className={styles.workPanel}>
                     <WorkInputPanel
                       contract={contract}
@@ -385,7 +399,7 @@ export default function WorkspacePage() {
                               key={card.kind}
                               card={card}
                               onAction={() =>
-                                setHelpNotice(`${card.title} is optional—keep going in the box above.`)
+                                setHelpNotice(`${card.title} can support this step. The main path is above.`)
                               }
                             />
                           ))
