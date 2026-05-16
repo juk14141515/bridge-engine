@@ -29,7 +29,7 @@ export default function WelcomePage() {
           </ul>
         </div>
         <div className="instant-demo-card card--warm">
-          <div className="instant-demo-before">Coding style</div>
+          <div className="instant-demo-before">Coding path</div>
           <div className="instant-demo-arrow" aria-hidden>
             →
           </div>

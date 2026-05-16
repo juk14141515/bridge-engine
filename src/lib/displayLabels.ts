@@ -52,13 +52,15 @@ export function resolveFrameId(frame: string | undefined | null): string {
 }
 
 export function frameTitleSafe(frame: string | undefined | null): string {
-  const id = resolveFrameId(frame);
+  const raw = frame?.trim() ?? '';
+  if (!raw) return 'Your interest';
+  const id = resolveFrameId(raw);
   const known = ALL_FRAMES.find((f) => f.id === id);
   if (known) return known.title;
-  if (frame && frame.trim()) {
+  if (id !== raw) {
     logSessionIssue('invalid_frame', { frame });
   }
-  return 'Your style';
+  return raw;
 }
 
 export function frameEmojiSafe(frame: string | undefined | null): string {

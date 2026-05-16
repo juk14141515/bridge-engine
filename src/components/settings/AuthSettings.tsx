@@ -31,7 +31,7 @@ export function AuthSettings() {
   }
 
   return (
-    <Card title="Account" subtitle="Optional. Local mode works without this.">
+    <Card title="Account" subtitle="Local mode works without this.">
       <div className={styles.stack}>
         {user ? (
           <>

@@ -1,12 +1,5 @@
 import { createSession, type NormalizedRuntimeContract } from './runtimeApi';
-import { normalizeFrameForSession } from './frameNormalize';
-import {
-  frameBlurb,
-  frameEmoji,
-  frameTitle,
-  pickSurpriseFrame,
-  SURPRISE_FRAME_ID,
-} from './onboardingOptions';
+import { frameBlurb, frameEmoji, frameTitle } from './onboardingOptions';
 import { logSessionIssue } from './sessionDiagnostics';
 
 export interface EntryRibbonState {
@@ -19,6 +12,7 @@ export interface EntryRibbonState {
 export async function openBridgeSession(params: {
   task: string;
   frame: string | null;
+  interests?: string[];
   supports?: string[];
 }): Promise<{
   workspaceId: string;
@@ -30,14 +24,16 @@ export async function openBridgeSession(params: {
   if (trimmed.length < 1) {
     throw new Error('Task is too short');
   }
-  const picked =
-    !params.frame || params.frame === SURPRISE_FRAME_ID ? pickSurpriseFrame() : params.frame;
-  const resolvedFrame = normalizeFrameForSession(picked);
+  const resolvedFrame = params.frame?.trim() ?? '';
+  if (!resolvedFrame) {
+    throw new Error('Personal interest is required');
+  }
   const supports = params.supports?.length ? params.supports : ['step_by_step'];
+  const interests = params.interests?.length ? params.interests : [resolvedFrame];
   const contract = await createSession({
     task: trimmed,
     frame: resolvedFrame,
-    interests: [resolvedFrame],
+    interests,
     supports,
     user_words: trimmed,
   });

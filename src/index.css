@@ -544,6 +544,13 @@ textarea.field {
   color: rgba(238, 242, 248, 0.94);
 }
 
+.choice-section__hint {
+  margin: -4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
 .start-chip-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -568,6 +575,22 @@ textarea.field {
     background 0.16s ease,
     border-color 0.16s ease,
     transform 0.16s ease;
+}
+
+.custom-interest-examples {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  color: rgba(154, 168, 188, 0.78);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.custom-interest-examples span {
+  padding: 3px 7px;
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.025);
 }
 
 .login-page {

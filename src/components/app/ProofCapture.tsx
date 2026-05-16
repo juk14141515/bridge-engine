@@ -15,7 +15,7 @@ export function ProofCapture(props: {
         <TextArea
           value={props.value}
           onChange={(e) => props.onChange(e.target.value)}
-          placeholder="Optional."
+          placeholder="Only if it helps."
           aria-label="Check-in input"
         />
       </Field>

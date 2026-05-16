@@ -71,7 +71,6 @@ export async function fetchJson<T = unknown>(
 // Master runtime API (backend-runtime-v2)
 // ---------------------------------------------------------------------------
 
-import { normalizeFrameForSession } from './frameNormalize';
 import {
   normalizeRuntimeResponse,
   type NormalizedRuntimeContract,
@@ -80,7 +79,12 @@ import {
 
 export type { NormalizedRuntimeContract, RuntimeWorkspace };
 
-export type RewriteMode = 'make_easier' | 'break_smaller' | 'give_example' | 'explain_differently';
+export type RewriteMode =
+  | 'make_easier'
+  | 'break_smaller'
+  | 'give_example'
+  | 'explain_differently'
+  | 'do_first_line';
 
 export type ExportFormat = 'markdown' | 'plain_text' | 'checklist';
 
@@ -123,9 +127,13 @@ function toContract(raw: Record<string, unknown>): NormalizedRuntimeContract {
 }
 
 export async function createSession(payload: CreateSessionPayload): Promise<NormalizedRuntimeContract> {
-  const frame = normalizeFrameForSession(payload.frame);
+  const frame = payload.frame?.trim();
   const interests =
-    payload.interests?.length ? payload.interests : frame ? [frame] : undefined;
+    payload.interests?.map((item) => item.trim()).filter(Boolean).length
+      ? payload.interests.map((item) => item.trim()).filter(Boolean)
+      : frame
+        ? [frame]
+        : undefined;
   const raw = await fetchJson<Record<string, unknown>>('/api/session/create', {
     method: 'POST',
     body: JSON.stringify({ ...payload, frame, interests }),
@@ -154,7 +162,7 @@ export async function rewriteSession(
   mode: RewriteMode,
   extras?: { frame?: string },
 ): Promise<NormalizedRuntimeContract> {
-  const frame = extras?.frame ? normalizeFrameForSession(extras.frame) : undefined;
+  const frame = extras?.frame?.trim() || undefined;
   const raw = await fetchJson<Record<string, unknown>>('/api/session/rewrite', {
     method: 'POST',
     body: JSON.stringify({

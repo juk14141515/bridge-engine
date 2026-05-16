@@ -9,7 +9,7 @@ export function SettingsPage() {
     <div className={styles.wrap}>
       <header className={styles.header}>
         <h1 className={styles.h1}>Advanced</h1>
-        <p className={styles.p}>Optional. The entry flow works without this.</p>
+        <p className={styles.p}>Tune Bridge after the main entry flow.</p>
       </header>
 
       <div className={styles.grid}>

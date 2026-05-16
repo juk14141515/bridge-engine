@@ -27,9 +27,9 @@ export function PersonalizationSettings() {
   }
 
   return (
-    <Card title="Advanced preferences" subtitle="Optional. Bridge also learns from taps over time.">
+    <Card title="Advanced preferences" subtitle="Bridge also learns from taps over time.">
       <div className={styles.stack}>
-        <Field label="Name (optional)" hint="Shown only on this device.">
+        <Field label="Name" hint="Shown only on this device.">
           <TextInput
             value={profile.displayName ?? ""}
             onChange={(e) => setState({ ...profile, displayName: e.target.value })}
@@ -38,7 +38,7 @@ export function PersonalizationSettings() {
           />
         </Field>
 
-        <Field label="Natural entry points" hint="Optional. The main flow learns these too.">
+        <Field label="Natural entry points" hint="The main flow learns these too.">
           <Chips options={[...new Set(profile.interests)]} selected={profile.interests} onToggle={toggleInterest} />
           <TextInput
             placeholder="Add an interest and press Enter"
@@ -53,7 +53,7 @@ export function PersonalizationSettings() {
           />
         </Field>
 
-        <Field label="What tends to help" hint="Optional.">
+        <Field label="What tends to help">
           <Chips
             options={driverOptions}
             selected={profile.motivationDrivers}
@@ -68,7 +68,7 @@ export function PersonalizationSettings() {
         </Field>
 
         <div className={styles.grid2}>
-          <Field label="Check-in style">
+          <Field label="Check-in rhythm">
             <select
               className={styles.select}
               value={profile.proofPreference}

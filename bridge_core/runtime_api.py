@@ -19,7 +19,7 @@ store = BridgeSqlStore()
 completion_engine = BridgeCompletionEngine()
 rewrite_engine = RewriteEngine()
 
-REWRITE_OPTIONS = ['make_easier', 'break_smaller', 'give_example', 'explain_differently']
+REWRITE_OPTIONS = ['make_easier', 'break_smaller', 'give_example', 'explain_differently', 'do_first_line']
 
 
 def ok(payload, status=200):
@@ -210,6 +210,14 @@ def api_session_continue():
         latest_output=output,
         persist=True,
     )
+    if envelope.get('verification'):
+        enriched['verification'] = envelope['verification']
+        enriched.setdefault('frontend_runtime', {})['verification'] = envelope['verification']
+    if envelope.get('gate'):
+        enriched['gate'] = envelope['gate']
+        enriched.setdefault('frontend_runtime', {})['gate'] = envelope['gate']
+    if envelope.get('next_prompt'):
+        enriched['next_prompt'] = envelope['next_prompt']
     store.save_workspace(ensure_workspace(enriched['workspace']))
     return ok(enriched)
 
@@ -239,6 +247,9 @@ def api_session_rewrite():
     elif mode == 'give_example':
         task_type = detect_task_type(session.get('task', ''), session.get('category', ''))
         step['prompt'] = f"{rewrite_engine.give_example(task_type)}\n\nThen: {before}"
+    elif mode == 'do_first_line':
+        task_type = detect_task_type(session.get('task', ''), session.get('category', ''))
+        step['prompt'] = f"{rewrite_engine.do_first_line(task_type)}\n\nThen keep going with: {before}"
     else:
         step['prompt'] = rewrite_engine.make_easier(before)
 

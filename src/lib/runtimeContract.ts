@@ -97,7 +97,13 @@ export interface FrontendRuntime {
   reward?: Record<string, unknown>;
   voice?: Record<string, unknown>;
   pacing?: { step_size?: string; session_length?: string; reward_frequency?: string };
-  verification?: { verified?: boolean; next_action?: string; flags?: string[] };
+  verification?: {
+    verified?: boolean;
+    confidence_score?: number;
+    next_action?: string;
+    flags?: string[];
+    message?: string;
+  };
   gate?: { advance?: boolean; mode?: string };
   engagement?: { state?: string; engagement_score?: number };
   pathways?: { pathways?: string[]; learning_target?: string; adaptive_switching?: boolean };
@@ -396,6 +402,14 @@ export function getPrimaryStep(contract: NormalizedRuntimeContract): {
   if (!step?.title && !step?.prompt && !np.title && !np.prompt && !np.message) {
     return { title: '', prompt: '' };
   }
+  if (contract.frontendRuntime.verification?.verified === false) {
+    return {
+      title: step?.title || np.title || 'Stay with this step',
+      prompt: np.prompt || np.message || step?.prompt || '',
+      why: step?.why,
+      action: step?.action,
+    };
+  }
   return {
     title: step?.title || np.title || '',
     prompt: step?.prompt || np.prompt || np.message || '',
@@ -431,10 +445,10 @@ export function getCheckpointMessage(contract: NormalizedRuntimeContract): strin
   const gate = contract.frontendRuntime.gate;
   const verification = contract.frontendRuntime.verification;
   if (gate?.advance === false) {
-    return 'Add one more sentence or detail so Bridge can move you forward.';
+    return verification?.message || 'Add one more sentence or detail so Bridge can move you forward.';
   }
   if (verification?.verified === false && verification?.next_action === 'request_checkpoint') {
-    return 'Add a little more to your answer before continuing.';
+    return verification.message || 'Add a little more to your answer before continuing.';
   }
   return null;
 }
@@ -532,7 +546,7 @@ export function getChallengeOption(contract: NormalizedRuntimeContract): Visible
   const gameType = ch.game_type as string | undefined;
   const objective = ch.objective as string | undefined;
   if (!gameType && !objective) return null;
-  const title = GAME_LABELS[gameType ?? ''] || 'Optional challenge';
+  const title = GAME_LABELS[gameType ?? ''] || 'Focused challenge';
   const card: VisibleInteractionCard = {
     kind: 'challenge',
     title,

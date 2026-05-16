@@ -28,3 +28,13 @@ class RewriteEngine:
             "coding": "Example scaffold: create app.py, routes.py, templates/index.html",
         }
         return examples.get(task_type, "Example: start with one rough visible output.")
+
+    def do_first_line(self, task_type="general"):
+        examples = {
+            "essay_writing": "First line: My essay is about the way this topic changes how people think or act.",
+            "language_learning": "First line: Hola, me llamo ___.",
+            "conversation": "First line: I want to talk about something that felt hard for me.",
+            "professional": "First line: Recommendation: we should choose ___ because ___.",
+            "coding_project": "First line: The smallest working version is ___.",
+        }
+        return examples.get(task_type, "First line: The smallest real piece I can write is ___.")

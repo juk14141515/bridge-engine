@@ -17,7 +17,7 @@ const OFFLINE_MSG =
 const TASK = 'I dislike English, love videogames, and need to write an essay.';
 const FRAME = 'gaming';
 const CONTINUE_OUTPUTS = [
-  'Games help me think in stories even when English worksheets feel dead.',
+  'My essay is about how social media affects attention.',
   'My essay connects videogame quest structure to how I plan paragraphs.',
   'Opening draft: English class feels like a grind, but games gave me a quest log for writing.',
 ];
@@ -26,6 +26,7 @@ const BANNED = /\b(NOT\s*FOUND|not_found|undefined|mock|placeholder|demo|fallbac
 
 const results = {
   create: 'PENDING',
+  weakContinue: 'PENDING',
   continue1: 'PENDING',
   continue2: 'PENDING',
   continue3: 'PENDING',
@@ -218,6 +219,19 @@ function artifactPreviewLength(body) {
   return bodySnippet(artifactPreview(body)).length;
 }
 
+function artifactSectionsSignature(body) {
+  var preview = artifactPreview(body);
+  var sections = preview && preview.sections && typeof preview.sections === 'object' ? preview.sections : {};
+  return bodySnippet(sections);
+}
+
+function verification(body) {
+  var fr = runtime(body);
+  if (fr.verification && typeof fr.verification === 'object') return fr.verification;
+  if (body && body.verification && typeof body.verification === 'object') return body.verification;
+  return {};
+}
+
 function stepSignature(body) {
   var step = currentStep(body);
   var next = body && body.next_prompt && typeof body.next_prompt === 'object' ? body.next_prompt : {};
@@ -398,6 +412,42 @@ function assertContinue(prev, next, phase, endpoint) {
   });
 }
 
+function assertWeakContinue(prev, next, phase, endpoint) {
+  assertBaseContract(phase, endpoint, next);
+  assertPhase(getWorkspaceId(next) === getWorkspaceId(prev), phase, endpoint, 'workspace id changed', {
+    bodySnippet: bodySnippet(next),
+  });
+  assertPhase(getStepIndex(next) === getStepIndex(prev), phase, endpoint, 'weak input advanced step index', {
+    bodySnippet: bodySnippet(next),
+  });
+  assertPhase(getProgressDone(next) === getProgressDone(prev), phase, endpoint, 'weak input advanced progress', {
+    bodySnippet: bodySnippet(next),
+  });
+  assertPhase(artifactSectionsSignature(next) === artifactSectionsSignature(prev), phase, endpoint, 'weak input changed artifact sections', {
+    bodySnippet: bodySnippet(next.artifact_preview),
+  });
+  var ver = verification(next);
+  var confidence = typeof ver.confidence_score === 'number' ? ver.confidence_score : 100;
+  assertPhase(ver.verified === false || confidence < 50, phase, endpoint, 'weak input was not rejected by verification', {
+    bodySnippet: bodySnippet(ver),
+  });
+  assertPhase(Array.isArray(ver.flags) && ver.flags.length > 0, phase, endpoint, 'verification flags missing for weak input', {
+    bodySnippet: bodySnippet(ver),
+  });
+  var guidance = String(ver.message || (next.next_prompt && next.next_prompt.message) || (next.next_prompt && next.next_prompt.prompt) || '');
+  assertPhase(guidance.length > 0, phase, endpoint, 'supportive guidance missing for weak input', {
+    bodySnippet: bodySnippet(next),
+  });
+}
+
+function assertVerified(next, phase, endpoint) {
+  var ver = verification(next);
+  var confidence = typeof ver.confidence_score === 'number' ? ver.confidence_score : 0;
+  assertPhase(ver.verified === true || confidence >= 50, phase, endpoint, 'rough real input did not pass verification', {
+    bodySnippet: bodySnippet(ver),
+  });
+}
+
 function assertRewrite(rewrite, workspaceId) {
   var endpoint = '/api/session/rewrite';
   assertBaseContract('rewrite', endpoint, rewrite);
@@ -449,6 +499,7 @@ function printSummary(workspaceId, history, exportLength) {
   console.log('\nBridge Runtime Acceptance Summary\n');
   console.log('* Workspace ID: ' + workspaceId);
   console.log('* Create: ' + results.create);
+  console.log('* Weak Continue: ' + results.weakContinue);
   console.log('* Continue 1: ' + results.continue1);
   console.log('* Continue 2: ' + results.continue2);
   console.log('* Continue 3: ' + results.continue3);
@@ -494,15 +545,25 @@ async function main() {
   var last = create;
   var signatures = [stepSignature(create)];
 
+  var continueEndpoint = '/api/session/continue';
+  var weak = await request('weak continue', continueEndpoint, 'POST', {
+    workspace_id: workspaceId,
+    user_output: 'starting the essay',
+  });
+  assertWeakContinue(create, weak, 'weak continue', continueEndpoint);
+  results.weakContinue = 'PASS';
+  last = weak;
+
   for (var i = 0; i < CONTINUE_OUTPUTS.length; i += 1) {
     var phase = 'continue ' + (i + 1);
     var key = 'continue' + (i + 1);
-    var endpoint = '/api/session/continue';
+    var endpoint = continueEndpoint;
     var cont = await request(phase, endpoint, 'POST', {
       workspace_id: workspaceId,
       user_output: CONTINUE_OUTPUTS[i],
     });
     assertContinue(last, cont, phase, endpoint);
+    if (i === 0) assertVerified(cont, phase, endpoint);
     signatures.push(stepSignature(cont));
     history.push(snapshot(cont));
     results[key] = 'PASS';

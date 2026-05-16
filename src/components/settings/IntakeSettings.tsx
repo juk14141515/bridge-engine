@@ -25,7 +25,7 @@ const toggles: Array<[keyof IntakePreferences, string]> = [
   ["taskFeelsEmotionallyHeavy", "Some tasks feel emotionally heavy"],
   ["lowFuelSupport", "I need low-fuel support"],
   ["dyslexiaFriendlyReadability", "Dyslexia-friendly readability helps"],
-  ["adhdStyleFrictionSupport", "ADHD-style friction support helps"],
+  ["adhdStyleFrictionSupport", "ADHD friction support helps"],
   ["depressionLowEnergySupport", "Low-energy support helps"],
 ];
 
@@ -58,7 +58,7 @@ export function IntakeSettings() {
   }
 
   return (
-    <Card title="Support preferences" subtitle="Optional. Experiential, not diagnostic.">
+    <Card title="Support preferences" subtitle="Experiential, not diagnostic.">
       <div className={styles.stack}>
         {toggles.map(([key, label]) => (
           <label key={key} className={styles.toggle}>

@@ -42,8 +42,9 @@ import { createLoadGeneration, mergeRuntimeContracts } from '../lib/workspaceLif
 const REWRITE_MODES: ReadonlyArray<{ mode: RewriteMode; label: string; proLabel: string }> = [
   { mode: 'make_easier', label: 'Make easier', proLabel: 'Reduce scope' },
   { mode: 'break_smaller', label: 'Break smaller', proLabel: 'Decompose' },
-  { mode: 'give_example', label: 'Show example', proLabel: 'Show example' },
+  { mode: 'give_example', label: 'Give example', proLabel: 'Show example' },
   { mode: 'explain_differently', label: 'Explain differently', proLabel: 'Reframe' },
+  { mode: 'do_first_line', label: 'Do first line with me', proLabel: 'Draft first line' },
 ];
 
 interface BridgeLocationState {
@@ -175,6 +176,7 @@ export default function WorkspacePage() {
   const runtimeDensity = contract ? getRuntimeDensity(contract) : 'normal';
   const isLowDensity = runtimeDensity === 'low';
   const hideSecondaryNav = focusLayout || isLowDensity || minimal;
+  const verificationBlocked = contract?.frontendRuntime.verification?.verified === false || contract?.frontendRuntime.gate?.advance === false;
 
   async function handleContinue() {
     if (!contract?.workspace?.id || busy || isComplete) return;
@@ -190,7 +192,14 @@ export default function WorkspacePage() {
     try {
       const next = await continueSession(contract.workspace.id, output);
       if (!loadGen.current.isCurrent(seq)) return;
-      applyContract(next);
+      const merged = applyContract(next);
+      const verification = merged.frontendRuntime.verification;
+      const gate = merged.frontendRuntime.gate;
+      if (verification?.verified === false || gate?.advance === false) {
+        setAdvancing(false);
+        setHelpNotice(verification?.message || 'Add one concrete detail and try Continue again.');
+        return;
+      }
       setDraft('');
       setExportText(null);
       setExportCopied(false);
@@ -321,7 +330,7 @@ export default function WorkspacePage() {
               <p className="bridge-entry-ribbon__sub">{entryRibbon.frameBlurb}</p>
               <p className="bridge-entry-ribbon__foot">
                 One step at a time. Save when you are ready—we will move you forward through the{' '}
-                {entryRibbon.frameTitle} style you picked.
+                {entryRibbon.frameTitle} path you picked.
               </p>
             </div>
           ) : null}
@@ -338,7 +347,7 @@ export default function WorkspacePage() {
             </div>
             <h1 className="session-identity__task">{task} → {fTitle}</h1>
             <p className="session-identity__sub">
-              Bridge is turning this into {fTitle.toLowerCase()}-shaped steps until it is done.
+              Bridge is turning this through {fTitle} into steps you can keep following.
               {fBlurb ? ` ${fBlurb}` : ''}
             </p>
             <ProgressPill done={progress.done} total={progress.total} percent={progress.percent} />
@@ -426,8 +435,8 @@ export default function WorkspacePage() {
 
                   {helpNotice ? <p className="muted small">{helpNotice}</p> : null}
 
-                  {!minimal ? (
-                    <details className={styles.rewriteFold}>
+                  {(!minimal || verificationBlocked) ? (
+                    <details className={styles.rewriteFold} open={verificationBlocked || undefined}>
                       <summary>Adjust this step</summary>
                       <div className={styles.rewriteGrid}>
                         {REWRITE_MODES.map((b) => (

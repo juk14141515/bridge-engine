@@ -11,7 +11,7 @@ const ATMOSPHERE_LABEL: Record<InteractionAtmosphere, string> = {
   boss_battle: 'Final stretch',
   teach_back: 'Explain it simply',
   conversational: 'Conversation',
-  default: 'Optional',
+  default: 'Extra support',
 };
 
 export function RuntimeInteractionCard({

@@ -62,7 +62,7 @@ export function NewTaskPage() {
           </div>
 
           <div className={styles.fieldGroup}>
-            <label className={styles.label}>Interest frame</label>
+            <label className={styles.label}>Personal interest</label>
             <select className={styles.select} value={interest} onChange={(e) => setInterest(e.target.value)}>
               {interests.map((item) => <option key={item}>{item}</option>)}
             </select>
@@ -73,7 +73,7 @@ export function NewTaskPage() {
           ) : null}
 
           <div className={styles.fieldGroup}>
-            <label className={styles.label}>Optional cognitive mode</label>
+            <label className={styles.label}>Cognitive support mode</label>
             <select className={styles.select} value={mode} onChange={(e) => setMode(e.target.value)}>
               <option value="">No preference</option>
               {modes.map((item) => <option key={item}>{item}</option>)}

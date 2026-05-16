@@ -148,10 +148,10 @@ export function frameTitle(id: string | undefined | null): string {
   if (!id?.trim()) return '';
   const resolved = normalizeFrameForSession(id);
   const chip = ALL_FRAMES.find((f) => f.id === resolved);
-  if (!chip && id.trim()) {
+  if (!chip && id.trim() && resolved !== id.trim()) {
     logSessionIssue('invalid_frame', { frame: id, resolved });
   }
-  return chip?.title ?? 'Your style';
+  return chip?.title ?? id.trim();
 }
 
 export function frameBlurb(id: string | undefined | null): string {

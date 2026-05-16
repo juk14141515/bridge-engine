@@ -19,6 +19,7 @@ DEFAULT_REWRITE_OPTIONS = [
     "break_smaller",
     "give_example",
     "explain_differently",
+    "do_first_line",
 ]
 
 

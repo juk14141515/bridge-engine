@@ -66,7 +66,7 @@ export function InterestPicker(props: { selected: string[]; onChange: (v: string
         ) : null}
       </Field>
 
-      <Field label="Add one" hint="Optional.">
+      <Field label="Add one" hint="Use your own words.">
         <div className={styles.row}>
           <TextInput
             placeholder="e.g. entrepreneurship"
